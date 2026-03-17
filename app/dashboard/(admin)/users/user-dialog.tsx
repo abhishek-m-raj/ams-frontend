@@ -5,7 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { User, updateUserById, UpdateUserData } from "@/lib/api/user";
+import { updateUserById } from "@/lib/api/user";
+import { User, UpdateUserData } from "@/lib/types/UserTypes";
 import {
   Dialog,
   DialogContent,

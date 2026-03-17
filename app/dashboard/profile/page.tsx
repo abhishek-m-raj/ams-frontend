@@ -1,37 +1,26 @@
 "use client";
 
-import type { User } from "@/components/profile/profile-form";
 import ProfileForm from "@/components/profile/profile-form";
 import Avatar, { genConfig } from 'react-nice-avatar';
 import { Avatar as AvatarIcon, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 
 export default function ProfilePage() {
-  const { data: session, isPending } = authClient.useSession();
-  const [user, setUser] = useState<User | null>(null);
-  const router = useRouter();
+  const { user, isLoading, session } = useAuth();
 
-  useEffect(() => {
-    if(isPending) return;
-    if(!session) return router.push("/signin?r=/profile");
+  const profileImageConfig: ReturnType<typeof genConfig> = useMemo(() => {
+    const gender = user?.user?.gender?.toLowerCase();
+    const userGender: "man" | "woman" = gender == "male" || gender === "man" ? "man" : "woman";
+    const randomConfig = genConfig(user?.user?.email || "");
+    return {
+      ...randomConfig,
+      sex: userGender,
+    };
+  }, [user]);
 
-
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/user`, {
-      credentials: "include",
-    }).then(async (res) => {
-      if (res.ok) {
-        const response = await res.json();
-        setUser(response.data);
-      }
-      if (res.status === 422) {
-        return router.push("/onboarding?r=/profile");
-      }
-    });
-  }, [session, isPending]);
-
-  if (!user) {
+  if (isLoading || !user) {
     return (
       <main className="min-h-screen flex items-center justify-center">
         <div>Loading...</div>
@@ -57,7 +46,7 @@ export default function ProfilePage() {
                     <AvatarImage src={user.user?.image || ''} alt={user.user?.first_name || 'User'} />
                     <AvatarFallback className="text-[8px]">{user.user?.first_name?.[0] || 'U'}</AvatarFallback>
                   </AvatarIcon> :
-                  <Avatar {...{...genConfig(user?.user.email), sex: user.user?.gender == "male" ? "man" : "woman"}} className="h-16 w-16" />
+                  <Avatar {...profileImageConfig} {...(()=> {console.log("Profile image config:", profileImageConfig); return {}})()} className="h-16 w-16" />
                 )
                 }
 

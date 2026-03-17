@@ -83,18 +83,16 @@ export default function MyClasses({ onSessionCreated }: MyClassesProps) {
                   className="cursor-pointer hover:shadow-md transition-shadow hover:border-primary"
                   onClick={() => handleClassClick(classItem)}
                 >
-                  <CardContent className="p-4 space-y-3">
+                  <CardContent className="space-y-3">
                     {/* Subject */}
-                    <div className="flex items-start gap-2">
+                    <div className="flex gap-2">
                       <BookOpen className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-base leading-tight truncate">
+                        <h3 className="font-semibold min-w-0 text-base leading-tight truncate">
                           {classItem.subject.name}
                         </h3>
-                        <p className="text-xs text-muted-foreground">
-                          {classItem.subject.subject_code}
+                      <p className="text-xs flex items-center justify-center text-muted-foreground">
+                          ({classItem.subject.subject_code})
                         </p>
-                      </div>
                     </div>
 
                     {/* Batch */}
@@ -104,23 +102,25 @@ export default function MyClasses({ onSessionCreated }: MyClassesProps) {
                         {classItem.batch.name}
                       </span>
                       <Badge variant="outline" className="ml-auto shrink-0">
-                        {classItem.batch.adm_year}
+                        S{classItem.subject.sem}
                       </Badge>
                     </div>
 
                     {/* Last Session Info */}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
-                      <Clock className="h-3 w-3" />
-                      <span>
-                        Last: {format(new Date(classItem.latestSession), "MMM dd, hh:mm a")}
-                      </span>
-                    </div>
+                    <div className="flex flex-row items-center gap-4 pt-2 border-t justify-between">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>
+                          Last: {format(new Date(classItem.latestSession), "MMM dd, hh:mm a")}
+                        </span>
+                      </div>
 
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      <span>
-                        {classItem.sessionCount} {classItem.sessionCount === 1 ? "session" : "sessions"} conducted
-                      </span>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        <span>
+                          {classItem.sessionCount} {classItem.sessionCount === 1 ? "session" : "sessions"} conducted
+                        </span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

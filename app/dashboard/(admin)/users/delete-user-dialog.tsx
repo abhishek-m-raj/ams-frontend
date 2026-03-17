@@ -1,6 +1,6 @@
 "use client";
 
-import { User } from "@/lib/api/user";
+import { User } from "@/lib/types/UserTypes";
 import {
   AlertDialog,
   AlertDialogAction,

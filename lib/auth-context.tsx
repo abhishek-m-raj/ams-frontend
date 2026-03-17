@@ -3,28 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { useRouter, usePathname } from 'next/navigation';
-
-type User = {
-  id: string;
-  email: string;
-  name: string;
-  image?: string;
-  role: "student" | "teacher" | "parent" | "principal" | "hod" | "staff" | "admin";
-  firstName?: string;
-  lastName?: string;
-  phone?: number;
-  gender?: string;
-  admissionNumber?: string;
-  admissionYear?: number;
-  candidateCode?: string;
-  department?: string;
-  dateOfBirth?: string;
-  designation?: string;
-  dateOfJoining?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  [key: string]: any;
-};
+import { User } from "./types/UserTypes";
 
 type AuthContextType = {
   session: any;
@@ -71,25 +50,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
       const responseData = await response.json();
-      const userData = {
-        id: responseData.data.user._id,
-        email: responseData.data.user.email,
-        name: responseData.data.user.name,
-        image: responseData.data.user.image,
-        role: responseData.data.user.role,
-        firstName: responseData.data.user.first_name,
-        lastName: responseData.data.user.last_name,
-        phone: responseData.data.user.phone,
-        gender: responseData.data.user.gender,
-        admissionNumber: responseData.data.adm_number,
-        admissionYear: responseData.data.adm_year,
-        candidateCode: responseData.data.candidate_code,
-        department: responseData.data.department,
-        dateOfBirth: responseData.data.date_of_birth,
-        createdAt: responseData.data.user.createdAt,
-        updatedAt: responseData.data.user.updatedAt,
-      };
-      setUser(userData);
+      // Assign the user object directly as it matches the User type
+      console.log("Fetched user data:", responseData.data.user);
+      setUser(responseData.data);
 
       if (response.status === 422) {
         // User needs to complete onboarding

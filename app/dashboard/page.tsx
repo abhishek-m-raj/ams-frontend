@@ -7,7 +7,7 @@ import TeacherDashboardPage from "./(teacher)/home";
 export default function DashboardPage() {
     const {user } = useAuth();
 
-    const role = user?.role
+    const role = user?.user.role
 
     if (role === "student") return <StudentDashboardPage />
     if(role === "admin" || role === "principal") return <AdminDashboardPage />

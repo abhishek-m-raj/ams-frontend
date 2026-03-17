@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { User, UserRole, listUsers, deleteUserById, PaginationInfo } from "@/lib/api/user";
+import { listUsers, deleteUserById } from "@/lib/api/user";
+import { User, UserRole, PaginationInfo } from "@/lib/types/UserTypes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

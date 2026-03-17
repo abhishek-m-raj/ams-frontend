@@ -18,6 +18,16 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user, isLoading, session } = useAuth();
 
+  const profileImageConfig: ReturnType<typeof genConfig> = useMemo(() => {
+    const gender = user?.user?.gender?.toLowerCase();
+    const userGender: "man" | "woman" = gender == "male" || gender === "man" ? "man" : "woman";
+    const randomConfig = genConfig(user?.user?.email || "");
+    return {
+      ...randomConfig,
+      sex: userGender,
+    };
+  }, [session]);
+
   useEffect(() => {
     if (!isLoading && !session) {
       router.push('/signin');
@@ -30,7 +40,7 @@ export default function DashboardLayout({
     ];
 
     // Admin-specific items
-    if (user?.role === 'admin' || user?.role === 'principal') {
+    if (user?.user.role === 'admin' || user?.user.role === 'principal') {
       baseItems.push(
         { icon: <Users size={18} />, label: 'Users', onClick: () => router.push('/dashboard/users') },
         { icon: <BookOpen size={18} />, label: 'Academics', onClick: () => router.push('/dashboard/academics') },
@@ -38,7 +48,7 @@ export default function DashboardLayout({
     }
 
     // Teacher-specific items
-    if (user?.role === 'teacher' || user?.role === 'hod') {
+    if (user?.user.role === 'teacher' || user?.user.role === 'hod') {
       baseItems.push( 
         { icon: <ClipboardCheck size={18} />, label: 'Attendance', onClick: () => router.push('/dashboard/attendance') }
       );
@@ -53,12 +63,12 @@ export default function DashboardLayout({
     // Profile item (always last)
     baseItems.push({
       icon: (
-        user?.image != undefined && user?.image != "" && user?.image != "gen" ?
+        user?.user.image != undefined && user?.user.image != "" && user?.user.image != "gen" ?
         <AvatarIcon className="h-6 w-6 sm:h-8 sm:w-8">
-          <AvatarImage src={user?.image || ''} alt={user?.name || 'User'} />
-          <AvatarFallback className="text-[8px]">{user?.name?.[0] || 'U'}</AvatarFallback>
+          <AvatarImage src={user?.user.image || ''} alt={user?.user.name || 'User'} />
+          <AvatarFallback className="text-[8px]">{user?.user.name?.[0] || 'U'}</AvatarFallback>
         </AvatarIcon> :
-        <Avatar {...genConfig(user?.email)} sex={user?.gender == "male" ? "man" : "woman"} className="h-6 w-6 sm:h-8 sm:w-8" />
+        <Avatar {...profileImageConfig} className="h-6 w-6 sm:h-8 sm:w-8" />
       ), 
       label: 'Profile', 
       onClick: () => router.push('/dashboard/profile')

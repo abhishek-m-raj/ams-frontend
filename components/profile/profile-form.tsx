@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
+import { User } from "@/lib/types/UserTypes";
 
 /* Helper to keep Label + Input spacing consistent */
 function FormField({
@@ -24,35 +25,6 @@ function FormField({
     </div>
   );
 }
-
-/* Types */
-export type Role = "student" | "parent" | "staff" | "other";
-
-export type User = {
-  user: {
-    _id?: string;
-    role: Role;
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone?: string;
-    image?: string;
-    gender?: "male" | "female" | "other";
-    createdAt: Date | string;
-    updatedAt: Date | string;
-  },
-  // student
-  adm_number?: string;
-  adm_year?: number;
-  candidate_code?: string;
-  department?: string;
-  date_of_birth?: string;
-  // parent
-  relation?: string;
-  // staff/other
-  designation?: string;
-  date_of_joining?: string;
-};
 
 export default function ProfileForm({
   initialUser,
