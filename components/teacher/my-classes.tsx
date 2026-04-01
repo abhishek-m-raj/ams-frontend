@@ -69,7 +69,7 @@ export default function MyClasses({ onSessionCreated }: MyClassesProps) {
               </div>
               <h3 className="text-lg font-semibold mb-2">No classes found</h3>
               <p className="text-sm text-muted-foreground text-center">
-                You haven't created any attendance sessions yet.
+                You haven&apos;t created any attendance sessions yet.
               </p>
             </CardContent>
           </Card>

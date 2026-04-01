@@ -3,7 +3,7 @@
  * Handles all user-related API operations for admin management
  */
 
-import { ListUsersParams, ListUsersResponse, ApiResponse, User, UpdateUserData, CreateUserData } from "../types/UserTypes";
+import { ListUsersParams, ListUsersResponse, ApiResponse, User, UpdateUserData, BulkCreateUserData, BulkCreateUsersResponseData } from "../types/UserTypes";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -92,7 +92,7 @@ export async function deleteUserById(id: string): Promise<void> {
 /**
  * Create multiple users in bulk (admin only)
  */
-export async function createUsersBulk(users: CreateUserData[]): Promise<ApiResponse<any>> {
+export async function createUsersBulk(users: BulkCreateUserData[]): Promise<ApiResponse<BulkCreateUsersResponseData>> {
   const response = await fetch(`${API_BASE}/user/bulk`, {
     method: 'POST',
     headers: {
@@ -102,6 +102,9 @@ export async function createUsersBulk(users: CreateUserData[]): Promise<ApiRespo
     body: JSON.stringify({ users }),
   });
 
-  const result: ApiResponse<any> = await response.json();
+  const result = (await response.json()) as ApiResponse<BulkCreateUsersResponseData>;
+  if (!response.ok) {
+    throw new Error(result.message || 'Failed to create users');
+  }
   return result;
 }

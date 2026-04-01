@@ -89,7 +89,7 @@ const STUDENTS: Student[] = Array.from({ length: 50 }, (_, i) => ({
   id: `STU${String(i + 1).padStart(3, '0')}`,
   name: `Student ${i + 1}`,
   email: `student${i + 1}@example.com`,
-  branch: ['Computer Science', 'Mechanical', 'Electronics', 'Civil'][i % 4] as any,
+  branch: (['Computer Science', 'Mechanical', 'Electronics', 'Civil'] as const)[i % 4],
   batch: '2021-2025',
   attendance: SUBJECTS.map(s => ({
     subjectId: s.id,

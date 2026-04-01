@@ -24,12 +24,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Eye, Pencil, Trash2, Search, UserPlus } from "lucide-react";
+import { AlertCircle, Eye, Pencil, Trash2, Search, UserPlus, Upload } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserDialog } from "./user-dialog";
 import { DeleteUserDialog } from "./delete-user-dialog";
 import { AddUserDialog } from "./add-user-dialog";
+import { BulkUploadDialog } from "./components/bulk-upload-dialog";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -58,6 +59,7 @@ export default function UsersPage() {
   const [dialogMode, setDialogMode] = useState<"view" | "edit">("view");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [bulkUploadDialogOpen, setBulkUploadDialogOpen] = useState(false);
 
   // Fetch users when role, page, or active search changes
   useEffect(() => {
@@ -189,10 +191,20 @@ export default function UsersPage() {
                 View, edit, and manage all users in the system
               </CardDescription>
             </div>
-            <Button className="w-full md:w-auto cursor-pointer" onClick={() => setAddUserDialogOpen(true)}>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add New User
-            </Button>
+            <div className="flex w-full md:w-auto flex-col md:flex-row gap-2">
+              <Button
+                variant="outline"
+                className="w-full md:w-auto cursor-pointer"
+                onClick={() => setBulkUploadDialogOpen(true)}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Import CSV
+              </Button>
+              <Button className="w-full md:w-auto cursor-pointer" onClick={() => setAddUserDialogOpen(true)}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add New User
+              </Button>
+            </div>
           </div>
         <CardContent className="space-y-4">
           {/* Role Tabs */}
@@ -268,7 +280,7 @@ export default function UsersPage() {
                     <TableRow key={user._id}>
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
-                          <span>{user.user.name}</span>
+                          <span>{user.name}</span>
                           {user.adm_number && (
                             <span className="text-xs text-muted-foreground md:hidden">
                               {user.adm_number}
@@ -276,10 +288,10 @@ export default function UsersPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-50 truncate">{user.user.email}</TableCell>
+                      <TableCell className="max-w-50 truncate">{user.email}</TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <Badge variant={getRoleBadgeVariant(user.user.role)}>
-                          {user.user.role}
+                        <Badge variant={getRoleBadgeVariant(user.role)}>
+                          {user.role}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
@@ -288,7 +300,7 @@ export default function UsersPage() {
                         {selectedTab === 'parent' && user.relation}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {user.department || user.user.phone || "-"}
+                        {user.department || user.phone || "-"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -398,7 +410,7 @@ export default function UsersPage() {
             user={selectedUser}
             open={deleteDialogOpen}
             onOpenChange={setDeleteDialogOpen}
-            onConfirm={() => handleDelete(selectedUser.user._id)}
+            onConfirm={() => handleDelete(selectedUser._id)}
           />
         </>
       )}
@@ -406,6 +418,12 @@ export default function UsersPage() {
       <AddUserDialog
         open={addUserDialogOpen}
         onOpenChange={setAddUserDialogOpen}
+        onSuccess={fetchUsers}
+      />
+
+      <BulkUploadDialog
+        open={bulkUploadDialogOpen}
+        onOpenChange={setBulkUploadDialogOpen}
         onSuccess={fetchUsers}
       />
     </div>

@@ -28,7 +28,7 @@ export function DeleteUserDialog({ user, open, onOpenChange, onConfirm }: Delete
           <AlertDialogDescription className="space-y-2">
             <p>
               This action cannot be undone. This will permanently delete the user account for{" "}
-              <span className="font-semibold">{user.user.name}</span> ({user.user.email}).
+              <span className="font-semibold">{user.name}</span> ({user.email}).
             </p>
             <p className="text-destructive font-medium">
               All associated data including:
@@ -36,8 +36,8 @@ export function DeleteUserDialog({ user, open, onOpenChange, onConfirm }: Delete
             <ul className="list-disc list-inside ml-4 text-sm">
               <li>User authentication credentials</li>
               <li>Profile information</li>
-              <li>Role-specific data ({user.user.role})</li>
-              {user.user.role === 'student' && <li>Associated parent records</li>}
+              <li>Role-specific data ({user.role})</li>
+              {user.role === 'student' && <li>Associated parent records</li>}
             </ul>
             <p className="text-destructive font-medium">
               will be permanently deleted from the system.

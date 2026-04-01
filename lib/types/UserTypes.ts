@@ -1,50 +1,66 @@
+export type UserRole = "student" | "teacher" | "parent" | "principal" | "hod" | "staff" | "admin";
+export type Gender = "male" | "female" | "other";
+export type Department = "CSE" | "ECE" | "IT";
 
-export type UserRole = 'student' | 'teacher' | 'parent' | 'principal' | 'hod' | 'staff' | 'admin';
-export type Gender = 'male' | 'female' | 'other';
-export type Department = 'CSE' | 'ECE' | 'IT';
+export type ParentRelation = "mother" | "father" | "guardian";
 
+export type BatchRef = {
+  _id: string;
+  name: string;
+  year?: number;
+  adm_year?: number;
+};
+
+// Flattened user profile returned by GET /user and GET /user/:id
 export interface User {
   _id: string;
-  user: {
-    _id: string;
-    name: string;
-    email: string;
-    emailVerified?: boolean;
-    first_name: string;
-    last_name: string;
-    role: UserRole;
-    phone?: number;
-    gender?: Gender;
-    image?: string;
-    createdAt: string;
-    updatedAt: string;
-  };
-  // Student-specific fields
+
+  // Base user fields (flattened at root)
+  name: string;
+  email: string;
+  role: UserRole;
+
+  first_name?: string;
+  last_name?: string;
+  phone?: number;
+  gender?: Gender;
+  image?: string;
+  emailVerified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+
+  // Student-specific fields (role === 'student')
   adm_number?: string;
   adm_year?: number;
   candidate_code?: string;
   department?: Department;
   date_of_birth?: string;
-  batch?: {
-    _id: string;
-    name: string;
-    year: number;
-  };
-  // Teacher-specific fields
+  // GET endpoints may populate full object; 422 may contain a batch id string
+  batch?: BatchRef | string;
+
+  // Teacher/staff-specific fields
   designation?: string;
   date_of_joining?: string;
+
   // Parent-specific fields
-  relation?: 'mother' | 'father' | 'guardian';
+  relation?: ParentRelation;
   child?: {
-    _id: string;
-    adm_number: string;
+    _id?: string;
+    adm_number?: string;
+    adm_year?: number;
     candidate_code?: string;
-    user: {
-      name: string;
-      first_name: string;
-      last_name: string;
+    user?: {
+      name?: string;
+      email?: string;
+      first_name?: string;
+      last_name?: string;
     };
   };
+}
+
+export interface IncompleteProfileResponse {
+  user: Pick<User, "_id" | "name" | "email" | "role">;
+  profile: Record<string, unknown>;
 }
 
 export interface ApiResponse<T> {
@@ -84,6 +100,7 @@ export interface UpdateUserData {
   last_name?: string;
   gender?: Gender;
   student?: {
+    batch?: string;
     adm_number?: string;
     adm_year?: number;
     candidate_code?: string;
@@ -96,14 +113,40 @@ export interface UpdateUserData {
     date_of_joining?: string;
   };
   parent?: {
-    relation?: 'mother' | 'father' | 'guardian';
+    relation?: ParentRelation;
     childID?: string;
   };
 }
 
-export interface CreateUserData {
+// Request shape for POST /user/bulk
+export interface BulkCreateUserData {
   name: string;
   email: string;
-  role?: UserRole;
+  role: UserRole;
   password?: string;
+
+  // Student-only fields (role === 'student')
+  batch?: string;
+  adm_number?: string;
+  adm_year?: number;
+  candidate_code?: string;
+  department?: Department;
+  date_of_birth?: string;
+}
+
+export interface BulkCreateUsersSuccess {
+  email: string;
+  name?: string;
+  _id?: string;
+}
+
+export interface BulkCreateUsersFailure {
+  email?: string;
+  error?: string;
+  message?: string;
+}
+
+export interface BulkCreateUsersResponseData {
+  success?: BulkCreateUsersSuccess[];
+  failed?: BulkCreateUsersFailure[];
 }

@@ -77,14 +77,41 @@ const CloudSVG = ({ className }: { className?: string }) => (
 export default function GreetingHeader({ userName }: GreetingHeaderProps) {
   const [greeting, setGreeting] = useState(getGreeting());
   const [mounted, setMounted] = useState(false);
+  const [stars, setStars] = useState<
+    { width: string; height: string; top: string; left: string; duration: number }[]
+  >([]);
 
   useEffect(() => {
-    setMounted(true);
+    const timeout = setTimeout(() => setMounted(true), 0);
     const interval = setInterval(() => {
       setGreeting(getGreeting());
     }, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
   }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!greeting.isNight) {
+        setStars([]);
+        return;
+      }
+
+      setStars(
+        Array.from({ length: 15 }, () => ({
+          width: `${Math.random() * 2 + 1}px`,
+          height: `${Math.random() * 2 + 1}px`,
+          top: `${Math.random() * 100}%`,
+          left: `${Math.random() * 100}%`,
+          duration: 2 + Math.random() * 3,
+        }))
+      );
+    }, 0);
+
+    return () => clearTimeout(timeout);
+  }, [greeting.isNight]);
 
   if (!mounted) return null;
 
@@ -129,18 +156,13 @@ export default function GreetingHeader({ userName }: GreetingHeaderProps) {
       {/* Stars for night */}
       {greeting.isNight && (
         <div className="absolute inset-0 opacity-60 pointer-events-none">
-           {[...Array(15)].map((_, i) => (
+           {stars.map((star, i) => (
              <motion.div
                key={i}
                className="absolute bg-white rounded-full"
-               style={{
-                 width: Math.random() * 2 + 1 + 'px',
-                 height: Math.random() * 2 + 1 + 'px',
-                 top: `${Math.random() * 100}%`,
-                 left: `${Math.random() * 100}%`,
-               }}
+               style={{ width: star.width, height: star.height, top: star.top, left: star.left }}
                animate={{ opacity: [0.2, 1, 0.2], scale: [1, 1.2, 1] }}
-               transition={{ duration: 2 + Math.random() * 3, repeat: Infinity }}
+               transition={{ duration: star.duration, repeat: Infinity }}
              />
            ))}
         </div>

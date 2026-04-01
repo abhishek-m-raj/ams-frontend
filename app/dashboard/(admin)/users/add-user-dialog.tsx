@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createUsersBulk } from "@/lib/api/user";
-import { UserRole } from "@/lib/types/UserTypes";
+import { BulkCreateUserData, Department, UserRole } from "@/lib/types/UserTypes";
+import { listBatches, Batch } from "@/lib/api/batch";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,24 @@ const createUserFormSchema = z.object({
   email: z.string().email("Invalid email address"),
   role: z.enum(["student", "teacher", "parent", "hod", "principal", "staff", "admin"] as const),
   password: z.string().min(8, "Password must be at least 8 characters").optional().or(z.literal("")),
+  // Student-only
+  batch: z.string().optional(),
+  adm_number: z.string().optional(),
+  adm_year: z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
+    z.number().int().optional()
+  ),
+  candidate_code: z.string().optional(),
+  department: z.enum(["CSE", "ECE", "IT"] as const).optional(),
+  date_of_birth: z.string().optional(),
+}).superRefine((val, ctx) => {
+  if (val.role === "student" && !val.batch) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Batch is required for students",
+      path: ["batch"],
+    });
+  }
 });
 
 type CreateUserFormValues = z.infer<typeof createUserFormSchema>;
@@ -54,6 +73,8 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [isBatchesLoading, setIsBatchesLoading] = useState(false);
 
   const form = useForm<CreateUserFormValues>({
     resolver: zodResolver(createUserFormSchema),
@@ -62,8 +83,38 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       email: "",
       role: "student",
       password: "",
+      batch: "",
+      adm_number: "",
+      adm_year: undefined,
+      candidate_code: "",
+      department: undefined,
+      date_of_birth: "",
     },
   });
+
+  const selectedRole = form.watch("role");
+
+  useEffect(() => {
+    const loadBatches = async () => {
+      if (!open) return;
+      if (selectedRole !== "student") return;
+      try {
+        setIsBatchesLoading(true);
+        const result = await listBatches({ page: 1, limit: 100 });
+        setBatches(result.batches);
+      } catch (e) {
+        console.error("Failed to load batches", e);
+      } finally {
+        setIsBatchesLoading(false);
+      }
+    };
+    loadBatches();
+  }, [open, selectedRole]);
+
+  const batchOptions = useMemo(
+    () => batches.map((b) => ({ value: b._id, label: `${b.name} (${b.adm_year})` })),
+    [batches]
+  );
 
   const handleDialogChange = (isOpen: boolean) => {
     if (!isOpen) {
@@ -81,7 +132,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       setError(null);
       setSuccessMessage(null);
 
-      const payload: any = {
+      const payload: BulkCreateUserData = {
         name: data.name,
         email: data.email,
         role: data.role,
@@ -89,6 +140,15 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
 
       if (data.password) {
         payload.password = data.password;
+      }
+
+      if (data.role === "student") {
+        payload.batch = data.batch;
+        if (data.adm_number) payload.adm_number = data.adm_number;
+        if (data.adm_year) payload.adm_year = data.adm_year;
+        if (data.candidate_code) payload.candidate_code = data.candidate_code;
+        if (data.department) payload.department = data.department as Department;
+        if (data.date_of_birth) payload.date_of_birth = data.date_of_birth;
       }
 
       // Use bulk endpoint with single user in array
@@ -201,6 +261,114 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 </FormItem>
               )}
             />
+
+            {selectedRole === "student" && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="batch"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Batch *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isBatchesLoading}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={isBatchesLoading ? "Loading batches..." : "Select batch"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {batchOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="adm_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Admission Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="ADM2024001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="adm_year"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Admission Year</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="2024" value={field.value ?? ""} onChange={field.onChange} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="candidate_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Candidate Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="CAND001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="department"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Department</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select department" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="CSE">CSE</SelectItem>
+                          <SelectItem value="ECE">ECE</SelectItem>
+                          <SelectItem value="IT">IT</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="date_of_birth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date of Birth</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
 
             <FormField
               control={form.control}

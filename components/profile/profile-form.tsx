@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,32 +31,12 @@ export default function ProfileForm({
 }: {
   initialUser?: User | null;
 }) {
-  // If a page accidentally passes null/undefined, show safe message:
-  if (!initialUser) {
-    return (
-      <div className="p-6 text-center">
-        <p className="text-sm text-gray-600">No profile available to edit.</p>
-      </div>
-    );
-  }
-
-  const [user, setUser] = useState<User>(initialUser);
+  const [user, setUser] = useState<User | null>(initialUser ?? null);
   const [editing, setEditing] = useState<boolean>(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
-  // Keep component in sync if parent updates initialUser
-  useEffect(() => {
-    setUser(initialUser);
-  }, [initialUser]);
-
-  const onChange = (k: keyof User | "user.phone" | "user.gender", v: any) => {
-    if (k === "user.phone") {
-      setUser((s) => ({ ...s, user: { ...s.user, phone: v } }));
-    } else if (k === "user.gender") {
-      setUser((s) => ({ ...s, user: { ...s.user, gender: v } }));
-    } else {
-      setUser((s) => ({ ...s, [k]: v }));
-    }
+  const onChange = <K extends keyof User>(k: K, v: User[K]) => {
+    setUser((s) => (s ? ({ ...s, [k]: v }) : s));
   };
 
   const onSave = (e?: React.FormEvent) => {
@@ -66,6 +46,15 @@ export default function ProfileForm({
     setSavedMsg("Profile updated successfully.");
     setTimeout(() => setSavedMsg(null), 3000);
   };
+
+  // If a page accidentally passes null/undefined, show safe message:
+  if (!user) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-sm text-gray-600">No profile available to edit.</p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={onSave} className="space-y-6">
@@ -96,17 +85,20 @@ export default function ProfileForm({
       <Card className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
           <FormField label="First Name">
-            <Input value={user.user.first_name} disabled />
+            <Input value={user.first_name ?? ""} disabled />
           </FormField>
 
           <FormField label="Last Name">
-            <Input value={user.user.last_name} disabled />
+            <Input value={user.last_name ?? ""} disabled />
           </FormField>
 
           <FormField label="Phone Number">
             <Input
-              value={user.user.phone || ""}
-              onChange={(e) => onChange("user.phone", e.target.value)}
+              value={user.phone ? String(user.phone) : ""}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "");
+                onChange("phone", digits ? Number(digits) : undefined);
+              }}
               disabled={!editing}
               placeholder="+91 9xxxxxxxxx"
             />
@@ -116,8 +108,8 @@ export default function ProfileForm({
             <div className="relative">
               <select
                 aria-label="Gender"
-                value={user.user.gender ?? ""}
-                onChange={(e) => onChange("user.gender", e.target.value || undefined)}
+                value={user.gender ?? ""}
+                onChange={(e) => onChange("gender", (e.target.value || undefined) as User["gender"])}
                 disabled={!editing}
                 className={[
                   "h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm transition-colors",
@@ -151,14 +143,21 @@ export default function ProfileForm({
 
         {/* role-specific fields */}
         <div className="mt-6">
-          {user.user.role === "student" && (
+          {user.role === "student" && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
               <FormField label="Admission Number">
                 <Input value={user.adm_number || ""} onChange={(e) => onChange("adm_number", e.target.value)} disabled={!editing} />
               </FormField>
 
               <FormField label="Admission Year">
-                <Input value={user.adm_year || ""} onChange={(e) => onChange("adm_year", e.target.value)} disabled={!editing} />
+                <Input
+                  value={user.adm_year ? String(user.adm_year) : ""}
+                  onChange={(e) => {
+                    const value = e.target.value.trim();
+                    onChange("adm_year", value ? Number(value) : undefined);
+                  }}
+                  disabled={!editing}
+                />
               </FormField>
 
               <FormField label="Candidate Code">
@@ -166,7 +165,7 @@ export default function ProfileForm({
               </FormField>
 
               <FormField label="Department">
-                <Input value={user.department || ""} onChange={(e) => onChange("department", e.target.value)} disabled={!editing} />
+                <Input value={user.department || ""} onChange={(e) => onChange("department", (e.target.value || undefined) as User["department"])} disabled={!editing} />
               </FormField>
 
               <FormField label="Date of Birth">
@@ -175,22 +174,22 @@ export default function ProfileForm({
             </div>
           )}
 
-          {user.user.role === "parent" && (
+          {user.role === "parent" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               <FormField label="Relation">
-                <Input value={user.relation || ""} onChange={(e) => onChange("relation", e.target.value)} disabled={!editing} placeholder="Father / Mother / Guardian" />
+                <Input value={user.relation || ""} onChange={(e) => onChange("relation", (e.target.value || undefined) as User["relation"])} disabled={!editing} placeholder="Father / Mother / Guardian" />
               </FormField>
             </div>
           )}
 
-          {(user.user.role != "student" && user.user.role != "parent") && (
+          {(user.role != "student" && user.role != "parent") && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               <FormField label="Designation">
                 <Input value={user.designation || ""} onChange={(e) => onChange("designation", e.target.value)} disabled={!editing} />
               </FormField>
 
               <FormField label="Department">
-                <Input value={user.department || ""} onChange={(e) => onChange("department", e.target.value)} disabled={!editing} />
+                <Input value={user.department || ""} onChange={(e) => onChange("department", (e.target.value || undefined) as User["department"])} disabled={!editing} />
               </FormField>
 
               <FormField label="Date of Joining">

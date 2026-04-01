@@ -1,7 +1,7 @@
 "use client";
 
 import Navbar from "@/components/appshell/navbar";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Bell, BellRing, Book, BookOpen, CalendarDays, Home, Settings, Users, ClipboardCheck } from "lucide-react";
 import Dock from '@/components/appshell/Dock';
 import { useRouter } from 'next/navigation';
@@ -19,14 +19,14 @@ export default function DashboardLayout({
   const { user, isLoading, session } = useAuth();
 
   const profileImageConfig: ReturnType<typeof genConfig> = useMemo(() => {
-    const gender = user?.user?.gender?.toLowerCase();
+    const gender = user?.gender?.toLowerCase();
     const userGender: "man" | "woman" = gender == "male" || gender === "man" ? "man" : "woman";
-    const randomConfig = genConfig(user?.user?.email || "");
+    const randomConfig = genConfig(user?.email || "");
     return {
       ...randomConfig,
       sex: userGender,
     };
-  }, [session]);
+  }, [user?.email, user?.gender]);
 
   useEffect(() => {
     if (!isLoading && !session) {
@@ -40,7 +40,7 @@ export default function DashboardLayout({
     ];
 
     // Admin-specific items
-    if (user?.user.role === 'admin' || user?.user.role === 'principal') {
+    if (user?.role === 'admin' || user?.role === 'principal') {
       baseItems.push(
         { icon: <Users size={18} />, label: 'Users', onClick: () => router.push('/dashboard/users') },
         { icon: <BookOpen size={18} />, label: 'Academics', onClick: () => router.push('/dashboard/academics') },
@@ -48,7 +48,7 @@ export default function DashboardLayout({
     }
 
     // Teacher-specific items
-    if (user?.user.role === 'teacher' || user?.user.role === 'hod') {
+    if (user?.role === 'teacher' || user?.role === 'hod') {
       baseItems.push( 
         { icon: <ClipboardCheck size={18} />, label: 'Attendance', onClick: () => router.push('/dashboard/attendance') }
       );
@@ -63,10 +63,10 @@ export default function DashboardLayout({
     // Profile item (always last)
     baseItems.push({
       icon: (
-        user?.user.image != undefined && user?.user.image != "" && user?.user.image != "gen" ?
+        user?.image != undefined && user?.image != "" && user?.image != "gen" ?
         <AvatarIcon className="h-6 w-6 sm:h-8 sm:w-8">
-          <AvatarImage src={user?.user.image || ''} alt={user?.user.name || 'User'} />
-          <AvatarFallback className="text-[8px]">{user?.user.name?.[0] || 'U'}</AvatarFallback>
+          <AvatarImage src={user?.image || ''} alt={user?.name || 'User'} />
+          <AvatarFallback className="text-[8px]">{user?.name?.[0] || 'U'}</AvatarFallback>
         </AvatarIcon> :
         <Avatar {...profileImageConfig} className="h-6 w-6 sm:h-8 sm:w-8" />
       ), 
@@ -75,7 +75,7 @@ export default function DashboardLayout({
     });
 
     return baseItems;
-  }, [user, router]);
+  }, [router, user, profileImageConfig]);
 
   if (isLoading) {
     return <Loading />;

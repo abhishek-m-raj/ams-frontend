@@ -49,7 +49,7 @@ Update `.github/copilot-instructions.md` immediately after:
   - Reference: `lib/auth-client.ts` and `lib/auth-context.tsx`.
   - **Always use `useAuth()` hook** from `lib/auth-context.tsx` to access user data, session, and auth state.
   - For auth operations (signin, signout), use `authClient` from `lib/auth-client.ts`.
-  - User type includes: `id`, `email`, `name`, `image`, `role`, `firstName`, `lastName`, `phone`, `gender`, `admissionNumber`, `admissionYear`, `candidateCode`, `department`, etc.
+  - User type includes: `_id`, `email`, `name`, `image`, `role`, `first_name`, `last_name`, `phone`, `gender`, `adm_number`, `adm_year`, `candidate_code`, `department`, etc.
 
 ## Tech Stack & Conventions
 - **Framework:** Next.js 16 (App Router), React 19.
@@ -64,6 +64,7 @@ Update `.github/copilot-instructions.md` immediately after:
 - **State/Forms:** `react-hook-form` with `zod` validation.
 - **Date Utilities:** `date-fns` for date formatting and manipulation.
 - **Theming:** `next-themes` for dark/light mode support.
+- **CSV Utilities:** `papaparse` for parsing uploads + generating templates.
 
 ## Coding Standards
 1.  **Styling:**
@@ -149,6 +150,9 @@ Update `.github/copilot-instructions.md` immediately after:
   - Server-side pagination using `/user/list` API endpoint
   - Real-time search across name, email, first name, and last name
   - Add new users with role-specific fields (student, teacher, parent, staff, etc.)
+  - Student users require `batch` assignment during creation/onboarding
+  - Bulk CSV import for creating multiple users at once (single-role per upload)
+  - Downloadable CSV templates per role
   - View user details with complete profile information
   - Edit user information with role-specific fields
   - Delete users with confirmation dialog
@@ -156,9 +160,10 @@ Update `.github/copilot-instructions.md` immediately after:
 - **Components:**
   - `page.tsx` - Main users list page with data table and pagination
   - `add-user-dialog.tsx` - Modal for creating new users with role-based form sections
+  - `components/bulk-upload-dialog.tsx` - CSV upload dialog (template download, validation, loading, results)
   - `user-dialog.tsx` - Combined modal for viewing and editing user information
   - `delete-user-dialog.tsx` - Confirmation dialog for user deletion
-- **API Integration:** Uses `lib/api/user.ts` service functions with `/user/list` (GET) for fetching and `/user` (POST) for creating users
+- **API Integration:** Uses `lib/api/user.ts` service functions with `/user/list` (GET) and `/user/bulk` (POST) for create + bulk import (enforce same role per bulk request)
 
 #### Academics Management (`/dashboard/(admin)/academics`)
 - **Features:**

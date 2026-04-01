@@ -11,9 +11,9 @@ export default function ProfilePage() {
   const { user, isLoading, session } = useAuth();
 
   const profileImageConfig: ReturnType<typeof genConfig> = useMemo(() => {
-    const gender = user?.user?.gender?.toLowerCase();
+    const gender = user?.gender?.toLowerCase();
     const userGender: "man" | "woman" = gender == "male" || gender === "man" ? "man" : "woman";
-    const randomConfig = genConfig(user?.user?.email || "");
+    const randomConfig = genConfig(user?.email || "");
     return {
       ...randomConfig,
       sex: userGender,
@@ -41,10 +41,10 @@ export default function ProfilePage() {
           <div className="lg:col-span-1">
             <div className="rounded-2xl border bg-card p-6 shadow-sm">
               <div className="flex items-center space-x-4">
-                 {(user.user?.image !== undefined && user.user?.image != "" && user.user?.image != "gen" ?
+                 {(user.image !== undefined && user.image != "" && user.image != "gen" ?
                   <AvatarIcon className="h-16 w-16">
-                    <AvatarImage src={user.user?.image || ''} alt={user.user?.first_name || 'User'} />
-                    <AvatarFallback className="text-[8px]">{user.user?.first_name?.[0] || 'U'}</AvatarFallback>
+                    <AvatarImage src={user.image || ''} alt={user.first_name || 'User'} />
+                    <AvatarFallback className="text-[8px]">{user.first_name?.[0] || 'U'}</AvatarFallback>
                   </AvatarIcon> :
                   <Avatar {...profileImageConfig} {...(()=> {console.log("Profile image config:", profileImageConfig); return {}})()} className="h-16 w-16" />
                 )
@@ -52,24 +52,24 @@ export default function ProfilePage() {
 
                 <div>
                   <div className="text-lg font-semibold">
-                    {user.user.first_name} {user.user.last_name}
+                    {user.first_name} {user.last_name}
                   </div>
-                  <div className="text-sm text-muted-foreground capitalize">{user.user.role}</div>
+                  <div className="text-sm text-muted-foreground capitalize">{user.role}</div>
                 </div>
               </div>
 
               <div className="mt-6 text-sm text-muted-foreground space-y-2">
                 <div className="flex">
                   <span className="font-medium w-28">Phone:</span>
-                  <span>{user.user.phone ?? "—"}</span>
+                  <span>{user.phone ?? "—"}</span>
                 </div>
 
                 <div className="flex">
                   <span className="font-medium w-28">Gender:</span>
-                  <span>{user.user.gender ?? "—"}</span>
+                  <span>{user.gender ?? "—"}</span>
                 </div>
 
-                {user.user.role === "student" && (
+                {user.role === "student" && (
                   <>
                     <div className="flex">
                       <span className="font-medium w-28">Admission No:</span>

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createBatch, Department } from "@/lib/api/batch";
 import { listUsers } from "@/lib/api/user";
+import type { User } from "@/lib/types/UserTypes";
 import {
   Dialog,
   DialogContent,
@@ -53,7 +54,7 @@ export function AddBatchDialog({ open, onOpenChange, onSuccess }: AddBatchDialog
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [teachers, setTeachers] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<User[]>([]);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
 
   const form = useForm<CreateBatchFormValues>({
@@ -212,7 +213,7 @@ export function AddBatchDialog({ open, onOpenChange, onSuccess }: AddBatchDialog
                     <SelectContent>
                       {teachers.map((teacher) => (
                         <SelectItem key={teacher._id} value={teacher._id}>
-                          {teacher.user.first_name} {teacher.user.last_name}
+                          {teacher.first_name} {teacher.last_name}
                         </SelectItem>
                       ))}
                     </SelectContent>

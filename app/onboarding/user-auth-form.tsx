@@ -12,6 +12,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth-context';
+import { listBatches, Batch } from '@/lib/api/batch';
+import type { User } from '@/lib/types/UserTypes';
 
 const departments = [
   { value: 'CSE', label: 'CSE' },
@@ -24,6 +26,7 @@ type FormData = {
   lastName: string;
   phone: string;
   gender: string;
+  batch: string;
   admissionNumber: string;
   admissionYear: string;
   candidateCode: string;
@@ -33,19 +36,19 @@ type FormData = {
   dateOfJoining: string;
 };
 
-  const FormField = ({ id, label, type = 'text', placeholder, value, error, onChange }: { id: keyof FormData; label: string; type?: string; placeholder?: string; value: string; error?: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; }) => (
+  const FormField = ({ id, label, type = 'text', placeholder, value, error, disabled, onChange }: { id: keyof FormData; label: string; type?: string; placeholder?: string; value: string; error?: string; disabled?: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; }) => (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       <Input id={id} type={type} placeholder={placeholder} value={value}
-        onChange={onChange} name={id} />
+        onChange={onChange} name={id} disabled={disabled} />
       {error && <p className="text-sm text-red-500">{error}</p>}
     </div>
   );
   
-  const SelectField = ({ id, label, value, error, options, placeholder, onValueChange }: { id: keyof FormData; label: string; value: string; error?: string; options: { value: string; label: string }[]; placeholder: string; onValueChange: (value: string) => void; }) => (
+  const SelectField = ({ id, label, value, error, options, placeholder, disabled, onValueChange }: { id: keyof FormData; label: string; value: string; error?: string; options: { value: string; label: string }[]; placeholder: string; disabled?: boolean; onValueChange: (value: string) => void; }) => (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <Select value={value} onValueChange={onValueChange}>
+      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
         <SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger>
         <SelectContent position="popper" sideOffset={5}>
           {options.map((opt) => (
@@ -62,25 +65,53 @@ type UserAuthFormProps = React.HTMLAttributes<HTMLDivElement>
 export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [isBatchesLoading, setIsBatchesLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     firstName: '', lastName: '', phone: '', gender: '',
+    batch: '',
     admissionNumber: '', admissionYear: '', candidateCode: '', department: '', dateOfBirth: '',
     designation: '', dateOfJoining: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const router = useRouter();
   const searchParams = useSearchParams();
-  const {user, isLoading : isPending, session, refetchUser} = useAuth();
+  const {user, incompleteProfile, isLoading : isPending, session, refetchUser} = useAuth();
+
+  const locked = {
+    name: Boolean(incompleteProfile?.user?.name),
+    batch: Boolean(incompleteProfile?.profile?.batch),
+    admissionNumber: Boolean(incompleteProfile?.profile?.adm_number),
+    admissionYear: Boolean(incompleteProfile?.profile?.adm_year),
+    candidateCode: Boolean(incompleteProfile?.profile?.candidate_code),
+    department: Boolean(incompleteProfile?.profile?.department),
+    dateOfBirth: Boolean(incompleteProfile?.profile?.date_of_birth),
+  };
+
+  useEffect(() => {
+    const loadBatches = async () => {
+      if (!session || user?.role !== 'student') return;
+      try {
+        setIsBatchesLoading(true);
+        const result = await listBatches({ page: 1, limit: 100 });
+        setBatches(result.batches);
+      } catch (e) {
+        console.error('Failed to load batches', e);
+      } finally {
+        setIsBatchesLoading(false);
+      }
+    };
+
+    loadBatches();
+  }, [session, user?.role]);
 
   useEffect(() => {
     if (isPending || !user) return;
     if (!session) return router.push('/signin');
-    if(user.firstName) {
+    if(!incompleteProfile && user.first_name) {
       const redirectUrl = searchParams.get('r') || '/dashboard';
       return router.push(redirectUrl);
     }
-
-    console.log("User data:", user);
     
     // Check if user has a role
     if (!user.role || (user.role == 'parent')) {
@@ -89,22 +120,32 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
     }
 
     // Pre-fill form with any existing data
+    const fullName = incompleteProfile?.user?.name || user.name || '';
+
+    type IncompleteProfileShape = Partial<Pick<User, 'adm_number' | 'adm_year' | 'candidate_code' | 'department' | 'date_of_birth' | 'batch'>>;
+    const existingProfile = (incompleteProfile?.profile ?? {}) as IncompleteProfileShape;
+
+    const batchId =
+      (typeof existingProfile.batch === 'string' ? existingProfile.batch : undefined) ||
+      (typeof user.batch === 'string' ? user.batch : undefined);
+
     setFormData({
-      firstName: user.name?.split(' ')[0] || '',
-      lastName: user.name?.split(' ').slice(1).join(' ') || '',
+      firstName: fullName.split(' ')[0] || '',
+      lastName: fullName.split(' ').slice(1).join(' ') || '',
       phone: '',
       gender: '',
-      admissionNumber: '',
-      admissionYear: '',
-      candidateCode: '',
-      department: '',
-      dateOfBirth: '',
+      batch: batchId || '',
+      admissionNumber: existingProfile.adm_number || '',
+      admissionYear: existingProfile.adm_year ? String(existingProfile.adm_year) : '',
+      candidateCode: existingProfile.candidate_code || '',
+      department: existingProfile.department || '',
+      dateOfBirth: existingProfile.date_of_birth || '',
       designation: '',
       dateOfJoining: '',
     });
 
     setIsLoading(false);
-  }, [session, isPending]);
+  }, [incompleteProfile, isPending, router, searchParams, session, user]);
   
     const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -128,6 +169,7 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
     if (!formData.gender) newErrors.gender = 'Please select a gender';
 
     if (user?.role === 'student') {
+      if (!formData.batch) newErrors.batch = 'Batch is required';
       if (!formData.admissionNumber.trim()) newErrors.admissionNumber = 'Required';
       if (!formData.admissionYear.trim()) newErrors.admissionYear = 'Required';
       if (!formData.candidateCode.trim()) newErrors.candidateCode = 'Required';
@@ -154,6 +196,9 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
     setError(null);
     try {
       // Submit the completion data to backend
+      const phoneNumber = Number(formData.phone.replace(/\D/g, ''));
+      const admissionYear = formData.admissionYear ? Number(formData.admissionYear) : undefined;
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user`, {
         method: 'POST',
         headers: {
@@ -164,11 +209,12 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
           name: user?.name,
           first_name: formData.firstName,
           last_name: formData.lastName,
-          phone: formData.phone,
+          phone: phoneNumber,
           gender: formData.gender,
           ...(user?.role === 'student' ? {student: {
+            batch: formData.batch,
             adm_number: formData.admissionNumber,
-            adm_year: formData.admissionYear,
+            adm_year: admissionYear,
             candidate_code: formData.candidateCode,
             department: formData.department,
             date_of_birth: formData.dateOfBirth,
@@ -250,8 +296,8 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
 
         {/* Common Fields */}
         <div className="grid grid-cols-2 gap-3">
-          <FormField id="firstName" label="First Name" placeholder="John" value={formData.firstName} error={errors.firstName} onChange={handleInputEvent} />
-          <FormField id="lastName" label="Last Name" placeholder="Doe" value={formData.lastName} error={errors.lastName} onChange={handleInputEvent} />
+          <FormField id="firstName" label="First Name" placeholder="John" value={formData.firstName} error={errors.firstName} disabled={locked.name} onChange={handleInputEvent} />
+          <FormField id="lastName" label="Last Name" placeholder="Doe" value={formData.lastName} error={errors.lastName} disabled={locked.name} onChange={handleInputEvent} />
         </div>
         <FormField id="phone" label="Phone Number" type="tel" placeholder="+91 98765 43210" value={formData.phone} error={errors.phone} onChange={handleInputEvent} />
         <SelectField id="gender" label="Gender" value={formData.gender} error={errors.gender} placeholder="Select gender"
@@ -260,13 +306,23 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
         {/* Role-Specific Fields */}
         {user?.role === 'student' ? (
           <>
+            <SelectField
+              id="batch"
+              label="Batch"
+              value={formData.batch}
+              error={errors.batch}
+              placeholder={isBatchesLoading ? "Loading batches..." : "Select batch"}
+              disabled={locked.batch || isBatchesLoading}
+              options={batches.map((b) => ({ value: b._id, label: `${b.name} (${b.adm_year})` }))}
+              onValueChange={(value) => handleInputChange('batch', value)}
+            />
             <div className="grid grid-cols-2 gap-3">
-              <FormField id="admissionNumber" label="Admission No." placeholder="29CSE555" value={formData.admissionNumber} error={errors.admissionNumber} onChange={handleInputEvent} />
-              <FormField id="admissionYear" label="Admission Year" type="number" placeholder="2026" value={formData.admissionYear} error={errors.admissionYear} onChange={handleInputEvent} />
+              <FormField id="admissionNumber" label="Admission No." placeholder="29CSE555" value={formData.admissionNumber} error={errors.admissionNumber} disabled={locked.admissionNumber} onChange={handleInputEvent} />
+              <FormField id="admissionYear" label="Admission Year" type="number" placeholder="2026" value={formData.admissionYear} error={errors.admissionYear} disabled={locked.admissionYear} onChange={handleInputEvent} />
             </div>
-            <FormField id="candidateCode" label="Candidate Code" placeholder="41529505078" value={formData.candidateCode} error={errors.candidateCode} onChange={handleInputEvent} />
-            <SelectField id="department" label="Department" value={formData.department} error={errors.department} placeholder="Select department" options={departments} onValueChange={(value) => handleInputChange('department', value)} />
-            <FormField id="dateOfBirth" label="Date of Birth" type="date" value={formData.dateOfBirth} error={errors.dateOfBirth} onChange={handleInputEvent} />
+            <FormField id="candidateCode" label="Candidate Code" placeholder="41529505078" value={formData.candidateCode} error={errors.candidateCode} disabled={locked.candidateCode} onChange={handleInputEvent} />
+            <SelectField id="department" label="Department" value={formData.department} error={errors.department} placeholder="Select department" disabled={locked.department} options={departments} onValueChange={(value) => handleInputChange('department', value)} />
+            <FormField id="dateOfBirth" label="Date of Birth" type="date" value={formData.dateOfBirth} error={errors.dateOfBirth} disabled={locked.dateOfBirth} onChange={handleInputEvent} />
           </>
         ): (
           <>
