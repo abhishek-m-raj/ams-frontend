@@ -22,7 +22,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Eye, Pencil, Trash2, Search, UserPlus, Upload } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,7 +30,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserDialog } from "./user-dialog";
 import { DeleteUserDialog } from "./delete-user-dialog";
 import { AddUserDialog } from "./add-user-dialog";
-import { BulkUploadDialog } from "./components/bulk-upload-dialog";
+import { BulkUploadDialog } from "./bulk-upload-dialog";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -44,7 +44,6 @@ const ROLE_TABS: { value: TabValue; label: string; roles: UserRole[] }[] = [
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]); // Store all fetched users for staff tab
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,11 +59,6 @@ export default function UsersPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [bulkUploadDialogOpen, setBulkUploadDialogOpen] = useState(false);
-
-  // Fetch users when role, page, or active search changes
-  useEffect(() => {
-    fetchUsers();
-  }, [selectedTab, currentPage, activeSearch]);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -100,7 +94,6 @@ export default function UsersPage() {
         const paginatedUsers = allStaffUsers.slice(startIndex, endIndex);
         
         setUsers(paginatedUsers);
-        setAllUsers(allStaffUsers);
         setPagination({
           currentPage,
           totalPages: Math.ceil(allStaffUsers.length / ITEMS_PER_PAGE),
@@ -126,6 +119,11 @@ export default function UsersPage() {
       setIsLoading(false);
     }
   }, [selectedTab, currentPage, activeSearch]);
+
+  // Fetch users when role, page, or active search changes
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleDelete = async (userId: string) => {
     try {
@@ -173,17 +171,15 @@ export default function UsersPage() {
     return variants[role] || "default";
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-4 md:p-8 space-y-4">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 md:p-8">
+    <>
+      {isLoading ? (
+        <div className="p-4 md:p-8 space-y-4">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      ) : (
+        <div className="p-4 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="mb-10">
               <CardTitle className="text-3xl font-bold tracking-tight">User Management</CardTitle>
@@ -277,7 +273,7 @@ export default function UsersPage() {
                   </TableRow>
                 ) : (
                   users.map((user) => (
-                    <TableRow key={user._id}>
+                    <TableRow key={user.id.user}>
                       <TableCell className="font-medium">
                         <div className="flex flex-col">
                           <span>{user.name}</span>
@@ -395,6 +391,8 @@ export default function UsersPage() {
             </div>
           )}
         </CardContent>
+        </div>
+      )}
 
       {/* Dialogs */}
       {selectedUser && (
@@ -410,7 +408,7 @@ export default function UsersPage() {
             user={selectedUser}
             open={deleteDialogOpen}
             onOpenChange={setDeleteDialogOpen}
-            onConfirm={() => handleDelete(selectedUser._id)}
+            onConfirm={() => handleDelete(selectedUser.id.user)}
           />
         </>
       )}
@@ -426,6 +424,6 @@ export default function UsersPage() {
         onOpenChange={setBulkUploadDialogOpen}
         onSuccess={fetchUsers}
       />
-    </div>
+    </>
   );
 }

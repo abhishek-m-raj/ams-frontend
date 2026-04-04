@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, LoaderPinwheel } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Logo from "@/components/logo";
 
 export default function Loading() {

@@ -10,10 +10,7 @@ import { User, UpdateUserData } from "@/lib/types/UserTypes";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -164,7 +161,7 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
         };
       }
 
-      await updateUserById(user._id, updateData);
+      await updateUserById(user.id.user, updateData);
       if (onSuccess) onSuccess(); // Notify parent to refresh list
       setIsEditing(false); // Switch back to view mode
     } catch (err) {
@@ -196,6 +193,24 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
   const isStudent = role === 'student';
   const isParent = role === 'parent';
   const isStaff = ['teacher', 'hod', 'principal', 'staff'].includes(role);
+
+  const hasBasicProfile = Boolean(user.first_name && user.last_name);
+  const hasStudentProfile = !isStudent
+    ? true
+    : Boolean(
+        user.batch &&
+          user.adm_number &&
+          user.adm_year &&
+          user.department &&
+          user.date_of_birth
+      );
+  const hasStaffProfile = !isStaff
+    ? true
+    : Boolean(user.designation && user.department && user.date_of_joining);
+  const hasParentProfile = !isParent
+    ? true
+    : Boolean(user.relation && user.child?._id);
+  const isProfileIncomplete = !(hasBasicProfile && hasStudentProfile && hasStaffProfile && hasParentProfile);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -232,13 +247,18 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                   <Badge variant="outline" className="mt-3 text-md px-4 py-1 capitalize">
                     {user.role}
                   </Badge>
+                  {isProfileIncomplete && (
+                    <Badge variant="secondary" className="mt-2">
+                      Profile Incomplete
+                    </Badge>
+                  )}
                 </div>
                 
                 <div className="border rounded-lg p-4 space-y-3">
                   <h4 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground border-b pb-2">Account Meta</h4>
                   <div className="space-y-2 text-sm">
-                    <InfoItem label="User ID" value={user._id} />
-                    <InfoItem label="Record ID" value={user._id} />
+                    <InfoItem label="User ID" value={user.id.user} />
+                    <InfoItem label="Record ID" value={user.id.record} />
                     <InfoItem label="Created At" value={formatDate(user.createdAt)} />
                     <InfoItem label="Updated At" value={formatDate(user.updatedAt)} />
                   </div>
@@ -422,8 +442,20 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                           <InfoItem label="Date of Birth" value={formatDate(user.date_of_birth)} />
                           {user.batch && (
                             <>
-                              <InfoItem label="Batch Name" value={user.batch.name} />
-                              <InfoItem label="Batch Year" value={user.batch.year.toString()} />
+                              <InfoItem
+                                label="Batch"
+                                value={
+                                  typeof user.batch === "string" ? user.batch : user.batch?.name
+                                }
+                              />
+                              <InfoItem
+                                label="Batch Year"
+                                value={
+                                  typeof user.batch === "string"
+                                    ? undefined
+                                    : user.batch?.year?.toString() ?? user.batch?.adm_year?.toString()
+                                }
+                              />
                             </>
                           )}
                         </div>
@@ -535,7 +567,7 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                              <InfoItem label="Relation" value={user.relation} />
                               {user.child && (
                                 <>
-                                  <InfoItem label="Child Name" value={user.child.user.name} />
+                                  <InfoItem label="Child Name" value={user.child?.user?.name} />
                                   <InfoItem label="Child Admission No." value={user.child.adm_number} />
                                 </>
                               )}

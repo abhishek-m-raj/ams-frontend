@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Subject, listSubjects, PaginationInfo } from "@/lib/api/subject";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,11 +46,7 @@ export function SubjectManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addSubjectDialogOpen, setAddSubjectDialogOpen] = useState(false);
 
-  useEffect(() => {
-    fetchSubjects();
-  }, [currentPage]);
-
-  const fetchSubjects = async () => {
+  const fetchSubjects = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -67,7 +63,11 @@ export function SubjectManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage]);
+
+  useEffect(() => {
+    fetchSubjects();
+  }, [fetchSubjects]);
 
   const handleView = (subject: Subject) => {
     setSelectedSubject(subject);

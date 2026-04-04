@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createUsersBulk } from "@/lib/api/user";
-import { BulkCreateUserData, Department, UserRole } from "@/lib/types/UserTypes";
+import { BulkCreateUserData, Department } from "@/lib/types/UserTypes";
 import { listBatches, Batch } from "@/lib/api/batch";
 import {
   Dialog,
@@ -37,17 +37,21 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Form schema for creating a new user
 const createUserFormSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters"),
+  name: z
+    .string()
+    .min(3, "Name must be at least 3 characters")
+    .refine((v) => v.trim().split(/\s+/).length >= 2, "Enter first and last name"),
   email: z.string().email("Invalid email address"),
   role: z.enum(["student", "teacher", "parent", "hod", "principal", "staff", "admin"] as const),
   password: z.string().min(8, "Password must be at least 8 characters").optional().or(z.literal("")),
   // Student-only
   batch: z.string().optional(),
   adm_number: z.string().optional(),
-  adm_year: z.preprocess(
-    (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
-    z.number().int().optional()
-  ),
+  adm_year: z.union([z.string(), z.number()]).optional().transform((val): number | undefined => {
+    if (val === "" || val === undefined || val === null) return undefined;
+    const num = Number(val);
+    return isNaN(num) ? undefined : num;
+  }),
   candidate_code: z.string().optional(),
   department: z.enum(["CSE", "ECE", "IT"] as const).optional(),
   date_of_birth: z.string().optional(),
@@ -132,8 +136,17 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       setError(null);
       setSuccessMessage(null);
 
+      const nameParts = data.name.trim().split(/\s+/);
+      if (nameParts.length < 2) {
+        setError("Please enter both first name and last name.");
+        return;
+      }
+      const first_name = nameParts.slice(0, -1).join(" ");
+      const last_name = nameParts[nameParts.length - 1] || "";
+
       const payload: BulkCreateUserData = {
-        name: data.name,
+        first_name,
+        last_name,
         email: data.email,
         role: data.role,
       };
@@ -164,7 +177,8 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       if (response.data?.success && response.data.success.length > 0) {
         setSuccessMessage("User created successfully!");
       } else {
-        setSuccessMessage(response.data?.failed[0].error || "User created successfully!");
+        const firstError = response.data?.failed?.[0]?.error;
+        setSuccessMessage(firstError || "User created successfully!");
       }
       
       setTimeout(() => {
@@ -183,7 +197,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
 
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-[95vw] w-full max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>
@@ -206,82 +220,103 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
         )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email *</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="john.doe@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="parent">Parent</SelectItem>
-                      <SelectItem value="hod">HOD</SelectItem>
-                      <SelectItem value="principal">Principal</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {selectedRole === "student" && (
-              <>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" autoComplete="off">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Basic Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="batch"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Batch *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={isBatchesLoading}>
+                      <FormLabel>Full Name *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email *</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="john.doe@uck.ac.in" {...field} autoComplete="off" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={isBatchesLoading ? "Loading batches..." : "Select batch"} />
+                            <SelectValue placeholder="Select role" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {batchOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="student">Student</SelectItem>
+                          <SelectItem value="teacher">Teacher</SelectItem>
+                          <SelectItem value="parent">Parent</SelectItem>
+                          <SelectItem value="hod">HOD</SelectItem>
+                          <SelectItem value="principal">Principal</SelectItem>
+                          <SelectItem value="staff">Staff</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password (Optional)</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Leave blank to auto-generate" {...field} autoComplete="new-password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            {selectedRole === "student" && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Academic Information (Student)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="batch"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Batch *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isBatchesLoading}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={isBatchesLoading ? "Loading batches..." : "Select batch"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {batchOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -303,90 +338,73 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="adm_year"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Admission Year</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="2024" value={field.value ?? ""} onChange={field.onChange} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="candidate_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Candidate Code</FormLabel>
-                      <FormControl>
-                        <Input placeholder="CAND001" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="department"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Department</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                  <FormField
+                    control={form.control}
+                    name="adm_year"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Admission Year</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select department" />
-                          </SelectTrigger>
+                          <Input type="number" placeholder="2024" value={field.value ?? ""} onChange={field.onChange} />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="CSE">CSE</SelectItem>
-                          <SelectItem value="ECE">ECE</SelectItem>
-                          <SelectItem value="IT">IT</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="date_of_birth"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date of Birth</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
+                  <FormField
+                    control={form.control}
+                    name="candidate_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Candidate Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="CAND001" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="department"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Department</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select department" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="CSE">CSE</SelectItem>
+                            <SelectItem value="ECE">ECE</SelectItem>
+                            <SelectItem value="IT">IT</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="date_of_birth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date of Birth</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             )}
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password (Optional)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="password" 
-                      placeholder="Leave blank for auto-generated password" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <DialogFooter>
               <Button

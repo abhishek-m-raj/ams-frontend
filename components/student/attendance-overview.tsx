@@ -2,7 +2,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { get } from "http";
 import { CalendarCheck } from "lucide-react";
 
 type SubjectAttendance = {

@@ -14,10 +14,6 @@ type Assignment = {
   status?: "pending" | "submitted" | "overdue";
 };
 
-type AssignmentsListProps = {
-  assignments: Assignment[];
-};
-
 // TODO: Replace with actual API calls
 const assignments: Assignment[] = [
   {
@@ -47,7 +43,7 @@ const assignments: Assignment[] = [
 ];
 
 export default function StudentDashboardPage() {
-  const { user } = useAuth();
+  useAuth();
 
   const getStatusBadge = (assignment: Assignment) => {
     const now = new Date();

@@ -168,6 +168,7 @@ Update `.github/copilot-instructions.md` immediately after:
 #### Academics Management (`/dashboard/(admin)/academics`)
 - **Features:**
   - Batch management (create, view, update, delete batches)
+  - Batch supports optional human-readable `id` (e.g., `24CSE`); backend auto-generates if omitted
   - Subject management (create, view, update, delete subjects)
   - Pagination and filtering support
   - Responsive data tables

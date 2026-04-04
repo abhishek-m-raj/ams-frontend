@@ -3,12 +3,11 @@
 import ProfileForm from "@/components/profile/profile-form";
 import Avatar, { genConfig } from 'react-nice-avatar';
 import { Avatar as AvatarIcon, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 
 export default function ProfilePage() {
-  const { user, isLoading, session } = useAuth();
+  const { user, isLoading } = useAuth();
 
   const profileImageConfig: ReturnType<typeof genConfig> = useMemo(() => {
     const gender = user?.gender?.toLowerCase();

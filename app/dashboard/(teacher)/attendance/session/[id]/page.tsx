@@ -19,22 +19,22 @@ export default function SessionAttendancePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const loadSession = async () => {
+      setLoading(true);
+      try {
+        const data = await getAttendanceSessionById(sessionId);
+        setSession(data);
+      } catch (error) {
+        console.error("Failed to load session:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (sessionId) {
-      loadSession();
+      void loadSession();
     }
   }, [sessionId]);
-
-  const loadSession = async () => {
-    setLoading(true);
-    try {
-      const data = await getAttendanceSessionById(sessionId);
-      setSession(data);
-    } catch (error) {
-      console.error("Failed to load session:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (

@@ -75,7 +75,7 @@ export default function MyClasses({ onSessionCreated }: MyClassesProps) {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {classes.map((classItem, index) => {
+            {classes.map((classItem) => {
               const key = `${classItem.batch._id}-${classItem.subject._id}`;
               return (
                 <Card

@@ -1,5 +1,4 @@
 "use client"
-import { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
 import { SignInUserAuthForm } from "./user-auth-form"

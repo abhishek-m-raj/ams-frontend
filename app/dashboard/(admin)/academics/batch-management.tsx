@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Batch, listBatches, deleteBatchById, PaginationInfo } from "@/lib/api/batch";
+import { useState, useEffect, useCallback } from "react";
+import { Batch, listBatches, PaginationInfo } from "@/lib/api/batch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,11 +46,7 @@ export function BatchManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addBatchDialogOpen, setAddBatchDialogOpen] = useState(false);
 
-  useEffect(() => {
-    fetchBatches();
-  }, [currentPage]);
-
-  const fetchBatches = async () => {
+  const fetchBatches = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -67,7 +63,11 @@ export function BatchManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage]);
+
+  useEffect(() => {
+    fetchBatches();
+  }, [fetchBatches]);
 
   const handleView = (batch: Batch) => {
     setSelectedBatch(batch);

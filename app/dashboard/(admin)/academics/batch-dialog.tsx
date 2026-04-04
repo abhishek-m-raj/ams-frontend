@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Batch, updateBatchById, Department } from "@/lib/api/batch";
+import { Batch, updateBatchById } from "@/lib/api/batch";
 import { listUsers } from "@/lib/api/user";
 import type { User } from "@/lib/types/UserTypes";
 import {
@@ -36,7 +36,10 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 
+const batchIdRegex = /^[0-9]{2}(CSE|ECE|IT)$/;
+
 const updateBatchSchema = z.object({
+  id: z.string().regex(batchIdRegex, "Batch ID must match format like 24CSE").optional().or(z.literal("")),
   name: z.string().min(1, "Batch name is required"),
   adm_year: z.number().min(2000).max(2100),
   department: z.enum(["CSE", "ECE", "IT"] as const),
@@ -63,6 +66,7 @@ export function BatchDialog({ batch, open, onOpenChange, mode, onSuccess }: Batc
   const form = useForm<UpdateBatchFormValues>({
     resolver: zodResolver(updateBatchSchema),
     defaultValues: {
+      id: "",
       name: "",
       adm_year: new Date().getFullYear(),
       department: "CSE",
@@ -70,21 +74,11 @@ export function BatchDialog({ batch, open, onOpenChange, mode, onSuccess }: Batc
     },
   });
 
-  useEffect(() => {
-    if (open && batch) {
-      form.reset({
-        name: batch.name,
-        adm_year: batch.adm_year,
-        department: batch.department,
-        staff_advisor: batch.staff_advisor?._id || "",
-      });
-      if (mode === "edit") {
-        fetchTeachers();
-      }
-    }
-  }, [open, batch, mode]);
+  const watchedDepartment = form.watch("department");
+  const watchedAdmYear = form.watch("adm_year");
+  const watchedId = form.watch("id");
 
-  const fetchTeachers = async () => {
+  const fetchTeachers = useCallback(async () => {
     try {
       setLoadingTeachers(true);
       const data = await listUsers({ role: "teacher", limit: 100 });
@@ -94,7 +88,41 @@ export function BatchDialog({ batch, open, onOpenChange, mode, onSuccess }: Batc
     } finally {
       setLoadingTeachers(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (open && batch) {
+      form.reset({
+        id: batch.id ?? "",
+        name: batch.name,
+        adm_year: batch.adm_year,
+        department: batch.department,
+        staff_advisor: batch.staff_advisor?._id || "",
+      });
+      if (mode === "edit") {
+        fetchTeachers();
+      }
+    }
+  }, [open, batch, mode, form, fetchTeachers]);
+
+  useEffect(() => {
+    if (!open || mode !== "edit") return;
+
+    const idState = form.getFieldState("id");
+    if (idState.isDirty) return;
+
+    const dept = watchedDepartment;
+    const year = watchedAdmYear;
+    if (!dept || !year) return;
+
+    const yy = String(year).slice(-2).padStart(2, "0");
+    const computed = `${yy}${dept}`;
+
+    const current = (watchedId ?? "").trim();
+    if (current.length > 0) return;
+
+    form.setValue("id", computed, { shouldValidate: true, shouldDirty: false });
+  }, [open, mode, watchedAdmYear, watchedDepartment, watchedId, form]);
 
   const handleDialogChange = (isOpen: boolean) => {
     if (!isOpen) {
@@ -170,6 +198,10 @@ export function BatchDialog({ batch, open, onOpenChange, mode, onSuccess }: Batc
               </Badge>
             </div>
             <div>
+              <p className="text-sm font-medium text-muted-foreground">Batch ID</p>
+              <p className="text-base">{batch.id ?? "—"}</p>
+            </div>
+            <div>
               <p className="text-sm font-medium text-muted-foreground">Staff Advisor</p>
               {batch.staff_advisor ? (
                 <div className="mt-1">
@@ -243,6 +275,23 @@ export function BatchDialog({ batch, open, onOpenChange, mode, onSuccess }: Batc
 
               <FormField
                 control={form.control}
+                name="id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Batch ID</FormLabel>
+                    <FormControl>
+                      <Input placeholder="24CSE" {...field} />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Optional. Auto-filled from admission year + department.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="staff_advisor"
                 render={({ field }) => (
                   <FormItem>
@@ -255,7 +304,7 @@ export function BatchDialog({ batch, open, onOpenChange, mode, onSuccess }: Batc
                       </FormControl>
                       <SelectContent>
                         {teachers.map((teacher) => (
-                          <SelectItem key={teacher._id} value={teacher._id}>
+                          <SelectItem key={teacher.id.user} value={teacher.id.user}>
                             {teacher.first_name} {teacher.last_name}
                           </SelectItem>
                         ))}

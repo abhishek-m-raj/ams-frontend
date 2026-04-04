@@ -3,7 +3,6 @@
 import { useAuth } from "@/lib/auth-context";
 import GreetingHeader from "@/components/student/greeting-header";
 import AttendanceOverview from "@/components/student/attendance-overview";
-import MarksOverview from "@/components/student/marks-overview";
 import NotificationsList from "@/components/student/notifications-list";
 
 // TODO: Replace with actual API calls

@@ -55,7 +55,6 @@ const AttendanceGauge = ({ percentage, colorClass }: { percentage: number, color
 };
 
 export default function ClassAttendanceOverview({ attendance }: ClassAttendanceOverviewProps) {
-  const totalClasses = attendance.reduce((sum, item) => sum + item.totalClasses, 0);
   const overallAverage = attendance.length > 0 
     ? Math.round(attendance.reduce((sum, item) => sum + item.averageAttendance, 0) / attendance.length) 
     : 0;

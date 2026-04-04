@@ -18,6 +18,8 @@ export interface StaffAdvisor {
 
 export interface Batch {
   _id: string;
+  // Human-readable batch id (e.g. 24CSE)
+  id?: string;
   name: string;
   adm_year: number;
   department: Department;
@@ -50,6 +52,8 @@ export interface ListBatchesParams {
 }
 
 export interface CreateBatchData {
+  // Optional human-readable batch id; backend can auto-generate if omitted
+  id?: string;
   name: string;
   adm_year: number;
   department: Department;
@@ -57,6 +61,7 @@ export interface CreateBatchData {
 }
 
 export interface UpdateBatchData {
+  id?: string;
   name?: string;
   adm_year?: number;
   department?: Department;

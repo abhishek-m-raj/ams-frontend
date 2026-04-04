@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createSubject, SubjectType } from "@/lib/api/subject";
+import { createSubject } from "@/lib/api/subject";
 import {
   Dialog,
   DialogContent,

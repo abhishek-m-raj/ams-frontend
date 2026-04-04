@@ -13,7 +13,10 @@ export type BatchRef = {
 
 // Flattened user profile returned by GET /user and GET /user/:id
 export interface User {
-  _id: string;
+  id: {
+    record : string;
+    user : string;
+  }
 
   // Base user fields (flattened at root)
   name: string;
@@ -59,7 +62,7 @@ export interface User {
 }
 
 export interface IncompleteProfileResponse {
-  user: Pick<User, "_id" | "name" | "email" | "role">;
+  user: Pick<User, "id" | "name" | "email" | "role">;
   profile: Record<string, unknown>;
 }
 
@@ -120,30 +123,36 @@ export interface UpdateUserData {
 
 // Request shape for POST /user/bulk
 export interface BulkCreateUserData {
-  name: string;
-  email: string;
+  first_name: string;
+  last_name: string;
   role: UserRole;
+
+  // When true, backend may generate Google Workspace email.
+  // If true, omit the `email` key entirely in request payload.
+  generate_mail?: boolean;
+
+  // Required only when generate_mail is false/absent.
+  email?: string;
   password?: string;
 
-  // Student-only fields (role === 'student')
-  batch?: string;
   adm_number?: string;
   adm_year?: number;
   candidate_code?: string;
   department?: Department;
   date_of_birth?: string;
+  batch?: string;
 }
 
 export interface BulkCreateUsersSuccess {
   email: string;
-  name?: string;
-  _id?: string;
+  role?: UserRole;
+  userId?: string;
+  studentCreated?: boolean;
 }
 
 export interface BulkCreateUsersFailure {
   email?: string;
   error?: string;
-  message?: string;
 }
 
 export interface BulkCreateUsersResponseData {

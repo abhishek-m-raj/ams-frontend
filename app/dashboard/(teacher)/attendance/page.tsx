@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
@@ -21,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Clock, Users, BookOpen, ArrowRight, Plus, MoreHorizontal, Eye, Pencil, Trash2, Filter } from "lucide-react";
+import { Calendar, Clock, Users, BookOpen, MoreHorizontal, Eye, Pencil, Trash2, Filter } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { listAttendanceSessions, deleteAttendanceSessionById, getRecentUniqueSessions, type AttendanceSession, type UniqueSession } from "@/lib/api/attendance-session";

@@ -2,7 +2,7 @@
 
 import Navbar from "@/components/appshell/navbar";
 import { useEffect, useMemo } from "react";
-import { Bell, BellRing, Book, BookOpen, CalendarDays, Home, Settings, Users, ClipboardCheck } from "lucide-react";
+import { BellRing, BookOpen, Home, Users, ClipboardCheck } from "lucide-react";
 import Dock from '@/components/appshell/Dock';
 import { useRouter } from 'next/navigation';
 import { Avatar as AvatarIcon, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

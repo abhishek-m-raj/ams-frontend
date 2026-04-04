@@ -1,20 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, Users, Clock, Calendar } from "lucide-react";
 import GreetingHeader from "@/components/student/greeting-header";
 import ClassAttendanceOverview from "@/components/teacher/class-attendance-overview";
 import TeacherNotifications from "@/components/teacher/teacher-notifications";
 import MyClasses from "@/components/teacher/my-classes";
-import { format } from "date-fns";
-import { listAttendanceSessions, type AttendanceSession } from "@/lib/api/attendance-session";
-import Link from "next/link";
 
 const dummyAttendanceData = [
     { className: "Data Structures", classCode: "CS301", totalClasses: 45, averageAttendance: 84, trend: "up" as const },
@@ -45,37 +35,6 @@ const dummyNotifications = [
 
 export default function TeacherHome() {
     const { user } = useAuth();
-    const router = useRouter();
-    const [sessions, setSessions] = useState<AttendanceSession[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        loadTodaySessions();
-    }, []);
-
-    const loadTodaySessions = async () => {
-        setLoading(true);
-        try {
-            const today = format(new Date(), "yyyy-MM-dd");
-            const data = await listAttendanceSessions({
-                limit: 10,
-            });
-            setSessions(data.sessions);
-        } catch (error) {
-            console.error("Failed to load sessions:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const getSessionTypeBadge = (type: string) => {
-        const variants = {
-            regular: "default",
-            extra: "secondary",
-            practical: "outline",
-        } as const;
-        return variants[type as keyof typeof variants] || "default";
-    };
 
     return (
         <div className="container mx-auto p-4 md:p-6 pb-20 md:pb-6 space-y-6">
@@ -83,7 +42,7 @@ export default function TeacherHome() {
             <GreetingHeader userName={user?.first_name || user?.name || "Teacher"} />
 
             {/* My Classes Section - Quick Start */}
-            <MyClasses onSessionCreated={loadTodaySessions} />
+            <MyClasses />
 
             {/* Main Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

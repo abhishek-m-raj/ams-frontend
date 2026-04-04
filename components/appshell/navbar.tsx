@@ -1,13 +1,11 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import Image from "next/image";
 import { ThemeToggle } from "./theme_toggle";
 import { ProfileBtn } from "./profile";
 import Logo from "../logo";
 
 export default function Navbar() {
-  const pathname = usePathname();
-
   return (
     <header className="flex items-center justify-between px-2 sm:px-8 border-b bg-background">
       <div className="flex items-center gap-4">
@@ -15,7 +13,7 @@ export default function Navbar() {
           <Logo className="h-10 w-10"/> 
           <span className="hidden sm:block">/</span> 
           <div className="gap-2 items-center-safe hidden sm:flex rounded-sm text-xs bg-muted px-3 py-1 m-2">
-            <img src="/logo-ucek.svg" alt="UCEK Logo" width={40} height={40} className="dark:invert"/>
+            <Image src="/logo-ucek.svg" alt="UCEK Logo" width={40} height={40} className="dark:invert" />
             <div className="font-semibold flex flex-col leading-tight">
                University College of Engineering
                <span className="font-normal">Kariavattom</span>
@@ -30,11 +28,4 @@ export default function Navbar() {
       </div>
     </header>
   );
-}
-
-function getPageTitle(path: string) {
-  if (path.startsWith("/attendance")) return "Attendance Dashboard";
-  if (path.startsWith("/students")) return "Students";
-  if (path.startsWith("/settings")) return "Settings";
-  return "Dashboard";
 }

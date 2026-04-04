@@ -92,7 +92,11 @@ export async function deleteUserById(id: string): Promise<void> {
 /**
  * Create multiple users in bulk (admin only)
  */
-export async function createUsersBulk(users: BulkCreateUserData[]): Promise<ApiResponse<BulkCreateUsersResponseData>> {
+export type CreateUsersBulkResponse = ApiResponse<BulkCreateUsersResponseData> & {
+  httpStatus: number;
+};
+
+export async function createUsersBulk(users: BulkCreateUserData[]): Promise<CreateUsersBulkResponse> {
   const response = await fetch(`${API_BASE}/user/bulk`, {
     method: 'POST',
     headers: {
@@ -103,8 +107,9 @@ export async function createUsersBulk(users: BulkCreateUserData[]): Promise<ApiR
   });
 
   const result = (await response.json()) as ApiResponse<BulkCreateUsersResponseData>;
-  if (!response.ok) {
+  // Backend may return 422 for "completed with failures" while still providing structured results.
+  if (!response.ok && response.status !== 422) {
     throw new Error(result.message || 'Failed to create users');
   }
-  return result;
+  return { ...result, httpStatus: response.status };
 }

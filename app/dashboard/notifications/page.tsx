@@ -14,10 +14,6 @@ type Notification = {
   isRead?: boolean;
 };
 
-type NotificationsListProps = {
-  notifications: Notification[];
-};
-
 // TODO: Replace with actual API calls
 const notifications :Notification[] = [
     {

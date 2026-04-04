@@ -89,7 +89,7 @@ export function SubjectDialog({ subject, open, onOpenChange, mode, onSuccess }: 
         faculty_in_charge: subject.faculty_in_charge.map(name => ({ name })),
       });
     }
-  }, [open, subject]);
+  }, [open, subject, form]);
 
   const handleDialogChange = (isOpen: boolean) => {
     if (!isOpen) {
