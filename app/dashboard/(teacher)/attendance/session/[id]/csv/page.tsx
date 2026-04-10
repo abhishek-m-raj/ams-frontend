@@ -92,27 +92,9 @@ export default function CsvAttendancePage() {
       let totalPages = 1;
 
       while (page <= totalPages) {
-        const response = await listUsers({ role: "student", page, limit: 100 });
+        const response = await listUsers({ role: "student", batch: batchId, page, limit: 100 });
         totalPages = response.pagination.totalPages;
-
-        const matchedStudents = response.users.filter((student) => {
-          const p = (student.profile ?? {}) as any;
-          const sBatchId = typeof p.batch === 'string' ? p.batch : p.batch?._id;
-          return sBatchId === batchId;
-        });
-        if (matchedStudents.length > 0) {
-          batchStudents.push(...matchedStudents);
-        } else {
-          const looksLikeFallbackData = response.users.some((student) => {
-            const p2 = (student.profile ?? {}) as any;
-            const sBatchId = typeof p2.batch === 'string' ? p2.batch : p2.batch?._id;
-            return sBatchId === "dummy-batch";
-          });
-          if (looksLikeFallbackData) {
-            batchStudents.push(...response.users);
-          }
-        }
-
+        batchStudents.push(...response.users);
         page++;
       }
 

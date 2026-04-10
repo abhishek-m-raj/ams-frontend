@@ -152,12 +152,13 @@ export function BatchManagement() {
 
   const filteredBatches = batches.filter((batch) => {
     const query = searchQuery.toLowerCase();
+    const advisor = batch.staff_advisor;
     return (
       batch?.name.toLowerCase().includes(query) ||
       batch.department.toLowerCase().includes(query) ||
       batch.adm_year.toString().includes(query) ||
-      batch.staff_advisor?.user?.first_name?.toLowerCase().includes(query) ||
-      batch.staff_advisor?.user?.last_name?.toLowerCase().includes(query)
+      advisor?.first_name?.toLowerCase().includes(query) ||
+      advisor?.last_name?.toLowerCase().includes(query)
     );
   });
 

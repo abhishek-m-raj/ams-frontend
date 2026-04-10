@@ -98,6 +98,7 @@ export interface ListUsersParams {
   page?: number;
   limit?: number;
   search?: string;
+  batch?: string;
 }
 
 // ─── Write payloads ───────────────────────────────────────────────────────────

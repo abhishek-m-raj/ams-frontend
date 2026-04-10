@@ -214,25 +214,22 @@ export function UserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[95vw] w-full max-h-[85vh] overflow-y-auto">
+      <DialogContent
+        className={cn(
+          "max-w-none sm:max-w-none",
+          "w-[calc(100vw-2rem)] h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)]",
+          "rounded-2xl p-6 overflow-hidden flex flex-col",
+          "[&>button]:hidden"
+        )}
+      >
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 flex-1 overflow-hidden">
 
               {/* ── Left Column: Avatar & Quick Info ── */}
-              <div className="space-y-4">
+              <div className="flex flex-col gap-4 overflow-y-auto pr-1">
                 <div className="relative flex flex-col items-center text-center p-6 border rounded-lg bg-muted/30">
-                  {!isEditing && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-2 top-2 h-8 w-8 text-muted-foreground hover:text-foreground"
-                      onClick={() => setIsEditing(true)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
-                  )}
+
                   <Avatar className="h-32 w-32 mb-4">
                     <AvatarImage src={user.image} alt={user.name} />
                     <AvatarFallback className="text-2xl">{getInitials(user.name)}</AvatarFallback>
@@ -266,10 +263,23 @@ export function UserDialog({
                     <InfoItem label="Updated At" value={formatDate(user.updatedAt)} />
                   </div>
                 </div>
+
+                {/* Edit Button */}
+                {!isEditing && (
+                  <Button
+                    variant="outline"
+                    className="w-full mt-2"
+                    onClick={() => setIsEditing(true)}
+                    type="button"
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit User
+                  </Button>
+                )}
               </div>
 
               {/* ── Right Column: Details / Edit Form ── */}
-              <div className="space-y-6">
+              <div className="space-y-6 overflow-y-auto pr-2 pb-4">
                 {error && (
                   <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md flex items-center gap-2">
                     <X className="h-4 w-4" />
@@ -595,7 +605,7 @@ export function UserDialog({
               </div>
             </div>
 
-            <DialogFooter className="mt-8 flex items-center justify-end gap-2">
+            <DialogFooter className="mt-4 pt-4 border-t flex items-center justify-end gap-2 shrink-0">
               {isEditing ? (
                 <>
                   <Button

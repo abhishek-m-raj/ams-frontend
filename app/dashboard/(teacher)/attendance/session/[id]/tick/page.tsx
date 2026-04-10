@@ -37,15 +37,9 @@ export default function TickAttendancePage() {
       let totalPages = 1;
 
       while (page <= totalPages) {
-        const response = await listUsers({ role: "student", page, limit: 100 });
+        const response = await listUsers({ role: "student", batch: batchId, page, limit: 100 });
         totalPages = response.pagination.totalPages;
-
-        const filtered = response.users.filter((student) => {
-          const p = (student.profile ?? {}) as any;
-          const sBatchId = typeof p.batch === 'string' ? p.batch : p.batch?._id;
-          return sBatchId === batchId;
-        });
-        batchStudents.push(...filtered);
+        batchStudents.push(...response.users);
         page += 1;
       }
 

@@ -67,16 +67,11 @@ export default function SessionAttendanceMethodsPage() {
         // Fetch session
         const sessionData = await getAttendanceSessionById(sessionId);
         setSession(sessionData);
-
-        // Fetch all students (listUsers now handles fallback to dummy data)
-        const usersResponse = await listUsers({ role: 'student', limit: 1000 });
         const sessionBatchId = typeof sessionData.batch === 'string' ? sessionData.batch : sessionData.batch?._id;
-        const filteredStudents = usersResponse.users.filter((user) => {
-          const p = (user.profile ?? {}) as any;
-          const studentBatchId = typeof p.batch === 'string' ? p.batch : p.batch?._id;
-          return studentBatchId === sessionBatchId;
-        });
-        const batchStudents = filteredStudents.length > 0 ? filteredStudents : usersResponse.users;
+
+        // Fetch students in batch
+        const usersResponse = await listUsers({ role: 'student', batch: sessionBatchId, limit: 1000 });
+        const batchStudents = usersResponse.users;
 
         setStudents(batchStudents);
 

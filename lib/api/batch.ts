@@ -9,11 +9,11 @@ export type Department = 'CSE' | 'ECE' | 'IT';
 
 export interface StaffAdvisor {
   _id: string;
-  user: {
-    first_name: string;
-    last_name: string;
-    email: string;
-  };
+  first_name: string;
+  last_name: string;
+  name?: string;
+  email: string;
+  role?: string;
 }
 
 export interface Batch {

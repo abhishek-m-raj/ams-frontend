@@ -18,6 +18,7 @@ export async function listUsers(params: ListUsersParams): Promise<ListUsersRespo
   if (params.page) queryParams.append('page', params.page.toString());
   if (params.limit) queryParams.append('limit', params.limit.toString());
   if (params.search) queryParams.append('search', params.search);
+  if (params.batch) queryParams.append('batch', params.batch);
 
     const response = await fetch(`${API_BASE}/user/list?${queryParams.toString()}`, {
       method: 'GET',
