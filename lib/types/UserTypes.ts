@@ -7,19 +7,49 @@ export type ParentRelation = "mother" | "father" | "guardian";
 export type BatchRef = {
   _id: string;
   name: string;
-  year?: number;
+  id?: string;
   adm_year?: number;
 };
 
-// Flattened user profile returned by GET /user and GET /user/:id
-export interface User {
-  id: {
-    record : string;
-    user : string;
-  }
-  _id?: string;
+// ─── Unified profile shapes (mirror backend TypeScript interfaces) ─────────────
 
-  // Base user fields (flattened at root)
+export interface StudentProfile {
+  adm_number?: string;
+  adm_year?: number;
+  candidate_code?: string;
+  department?: Department;
+  date_of_birth?: string;
+  batch?: BatchRef | string;
+}
+
+export interface StaffProfile {
+  designation?: string;
+  department?: string;
+  date_of_joining?: string;
+}
+
+export interface ParentProfile {
+  relation?: ParentRelation;
+  child?: {
+    _id?: string;
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    role?: UserRole;
+    profile?: StudentProfile;
+  };
+}
+
+export type UserProfile = StudentProfile | StaffProfile | ParentProfile | Record<string, never>;
+
+// ─── Unified User ─────────────────────────────────────────────────────────────
+// Returned by GET /user, GET /user/:id, and GET /user/list.
+// Role-specific data lives in `profile`, not at the root.
+
+export interface User {
+  /** Single consistent ID — the MongoDB User._id. */
+  _id: string;
+
   name: string;
   email: string;
   role: UserRole;
@@ -33,44 +63,15 @@ export interface User {
   createdAt?: string;
   updatedAt?: string;
 
-  // Student-specific fields (role === 'student')
-  adm_number?: string;
-  adm_year?: number;
-  candidate_code?: string;
-  department?: Department;
-  date_of_birth?: string;
-  // GET endpoints may populate full object; 422 may contain a batch id string
-  batch?: BatchRef | string;
-
-  // Teacher/staff-specific fields
-  designation?: string;
-  date_of_joining?: string;
-
-  // Parent-specific fields
-  relation?: ParentRelation;
-  child?: {
-    _id?: string;
-    adm_number?: string;
-    adm_year?: number;
-    candidate_code?: string;
-    user?: {
-      name?: string;
-      email?: string;
-      first_name?: string;
-      last_name?: string;
-    };
-  };
+  /** Role-specific embedded profile */
+  profile: UserProfile;
 }
 
-// GET /user returns a flattened user payload for both 200 and 422.
-// - 200: base + role-specific fields (if present)
-// - 422: base fields only (role-specific fields missing)
-// In both cases, the payload is returned at the root of `data`.
-export type IncompleteProfileResponse = Pick<
-  User,
-  "id" | "name" | "email" | "role"
-> &
-  Partial<Omit<User, "id" | "name" | "email" | "role">>;
+// GET /user returns a user payload for both 200 and 422.
+// - 200: complete profile
+// - 422: base fields + partial/empty profile (triggers onboarding)
+export type IncompleteProfileResponse = Pick<User, "_id" | "name" | "email" | "role"> &
+  Partial<Omit<User, "_id" | "name" | "email" | "role">>;
 
 export interface ApiResponse<T> {
   status_code: number;
@@ -99,8 +100,10 @@ export interface ListUsersParams {
   search?: string;
 }
 
+// ─── Write payloads ───────────────────────────────────────────────────────────
+// `name` is NEVER sent — always derived from first_name + last_name on the backend.
+
 export interface UpdateUserData {
-  name?: string;
   password?: string;
   image?: string;
   role?: UserRole;
@@ -108,39 +111,24 @@ export interface UpdateUserData {
   first_name?: string;
   last_name?: string;
   gender?: Gender;
-  student?: {
-    batch?: string;
-    adm_number?: string;
-    adm_year?: number;
-    candidate_code?: string;
-    department?: Department;
-    date_of_birth?: string;
-  };
-  teacher?: {
-    designation?: string;
-    department?: string;
-    date_of_joining?: string;
-  };
-  parent?: {
-    relation?: ParentRelation;
-    childID?: string;
-  };
+  /** Role-specific data sent as a flat profile object */
+  profile?: Partial<
+    StudentProfile &
+      StaffProfile & { relation?: ParentRelation; childID?: string }
+  >;
 }
 
-// Request shape for POST /user/bulk
+// Request shape for POST /user/bulk — keeps flat shape (service maps to profile internally)
 export interface BulkCreateUserData {
   first_name: string;
   last_name: string;
   role: UserRole;
 
-  // When true, backend may generate Google Workspace email.
-  // If true, omit the `email` key entirely in request payload.
   generate_mail?: boolean;
-
-  // Required only when generate_mail is false/absent.
   email?: string;
   password?: string;
 
+  // Student flat fields
   adm_number?: string;
   adm_year?: number;
   candidate_code?: string;
@@ -153,7 +141,6 @@ export interface BulkCreateUsersSuccess {
   email: string;
   role?: UserRole;
   userId?: string;
-  studentCreated?: boolean;
 }
 
 export interface BulkCreateUsersFailure {

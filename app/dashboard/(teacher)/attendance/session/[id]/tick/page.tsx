@@ -41,7 +41,8 @@ export default function TickAttendancePage() {
         totalPages = response.pagination.totalPages;
 
         const filtered = response.users.filter((student) => {
-          const sBatchId = typeof student.batch === 'string' ? student.batch : student.batch?._id;
+          const p = (student.profile ?? {}) as any;
+          const sBatchId = typeof p.batch === 'string' ? p.batch : p.batch?._id;
           return sBatchId === batchId;
         });
         batchStudents.push(...filtered);
@@ -264,8 +265,8 @@ export default function TickAttendancePage() {
                       <p className="font-semibold">{student.name}</p>
                       <p className="text-sm text-muted-foreground">{student.email}</p>
                       <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                        <span>Adm No: {student.adm_number ?? "N/A"}</span>
-                        <span>Dept: {student.department ?? "N/A"}</span>
+                        <span>Adm No: {(student.profile as any)?.adm_number ?? 'N/A'}</span>
+                        <span>Dept: {(student.profile as any)?.department ?? 'N/A'}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

@@ -36,7 +36,8 @@ export default function CsvAttendancePage() {
   const normalizedRollMap = useMemo(() => {
     const map = new Map<string, string>();
     students.forEach((student) => {
-      const roll = student.adm_number?.trim();
+      const p = (student.profile ?? {}) as any;
+      const roll = p.adm_number?.trim();
       if (!roll || !student._id) return;
       map.set(roll.toLowerCase(), student._id);
     });
@@ -95,14 +96,16 @@ export default function CsvAttendancePage() {
         totalPages = response.pagination.totalPages;
 
         const matchedStudents = response.users.filter((student) => {
-          const sBatchId = typeof student.batch === 'string' ? student.batch : student.batch?._id;
+          const p = (student.profile ?? {}) as any;
+          const sBatchId = typeof p.batch === 'string' ? p.batch : p.batch?._id;
           return sBatchId === batchId;
         });
         if (matchedStudents.length > 0) {
           batchStudents.push(...matchedStudents);
         } else {
           const looksLikeFallbackData = response.users.some((student) => {
-            const sBatchId = typeof student.batch === 'string' ? student.batch : student.batch?._id;
+            const p2 = (student.profile ?? {}) as any;
+            const sBatchId = typeof p2.batch === 'string' ? p2.batch : p2.batch?._id;
             return sBatchId === "dummy-batch";
           });
           if (looksLikeFallbackData) {

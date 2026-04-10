@@ -34,28 +34,28 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Copy, Loader2, Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// --- Form Schema & Types (reused from edit-user-dialog.tsx) ---
+// ─── Form Schema ──────────────────────────────────────────────────────────────
 
 const userFormSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Last name is required"),
-  phone: z.number().optional(),
-  gender: z.enum(["male", "female", "other"] as const).optional(),
-  
-  // Student fields
-  adm_number: z.string().optional(),
-  adm_year: z.number().optional(),
+  last_name:  z.string().min(1, "Last name is required"),
+  phone:      z.number().optional(),
+  gender:     z.enum(["male", "female", "other"] as const).optional(),
+
+  // Student profile fields
+  adm_number:     z.string().optional(),
+  adm_year:       z.number().optional(),
   candidate_code: z.string().optional(),
-  department: z.enum(["CSE", "ECE", "IT"] as const).optional(),
-  date_of_birth: z.string().optional(), // YYYY-MM-DD
+  department:     z.enum(["CSE", "ECE", "IT"] as const).optional(),
+  date_of_birth:  z.string().optional(),
 
-  // Teacher fields
-  designation: z.string().optional(),
-  date_of_joining: z.string().optional(),
+  // Staff profile fields
+  designation:    z.string().optional(),
+  date_of_joining:z.string().optional(),
 
-  // Parent fields
+  // Parent profile fields
   relation: z.enum(["mother", "father", "guardian"] as const).optional(),
-  childID: z.string().optional(),
+  childID:  z.string().optional(),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -64,11 +64,19 @@ interface UserDialogProps {
   user: User;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void; // Called after successful edit
+  onSuccess?: () => void;
   initialMode?: "view" | "edit";
 }
 
-export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = "view" }: UserDialogProps) {
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export function UserDialog({
+  user,
+  open,
+  onOpenChange,
+  onSuccess,
+  initialMode = "view",
+}: UserDialogProps) {
   const [isEditing, setIsEditing] = useState(initialMode === "edit");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,45 +88,50 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
-      first_name: "",
-      last_name: "",
-      phone: undefined,
-      gender: undefined,
-      adm_number: "",
-      adm_year: undefined,
+      first_name:     "",
+      last_name:      "",
+      phone:          undefined,
+      gender:         undefined,
+      adm_number:     "",
+      adm_year:       undefined,
       candidate_code: "",
-      department: undefined,
-      date_of_birth: "",
-      designation: "",
-      date_of_joining: "",
-      relation: undefined,
-      childID: "",
+      department:     undefined,
+      date_of_birth:  "",
+      designation:    "",
+      date_of_joining:"",
+      relation:       undefined,
+      childID:        "",
     },
   });
 
-  // Reset form with user data when switching to edit mode or dialog opens
+  // Populate form from user.profile when dialog opens or mode switches
   useEffect(() => {
     if (user && open) {
+      const p = (user.profile ?? {}) as any;
       form.reset({
-        first_name: user.first_name,
-        last_name: user.last_name,
-        phone: user.phone,
-        gender: user.gender,
-        
-        // Student
-        adm_number: user.adm_number,
-        adm_year: user.adm_year,
-        candidate_code: user.candidate_code,
-        department: user.department,
-        date_of_birth: user.date_of_birth ? new Date(user.date_of_birth).toISOString().split('T')[0] : "",
+        first_name: user.first_name ?? "",
+        last_name:  user.last_name  ?? "",
+        phone:      user.phone,
+        gender:     user.gender,
 
-        // Teacher
-        designation: user.designation,
-        date_of_joining: user.date_of_joining ? new Date(user.date_of_joining).toISOString().split('T')[0] : "",
+        // Student fields (from profile)
+        adm_number:     p.adm_number     ?? "",
+        adm_year:       p.adm_year,
+        candidate_code: p.candidate_code ?? "",
+        department:     p.department,
+        date_of_birth:  p.date_of_birth
+          ? new Date(p.date_of_birth).toISOString().split("T")[0]
+          : "",
 
-        // Parent
-        relation: user.relation,
-        childID: user.child?._id,
+        // Staff fields (from profile)
+        designation:     p.designation    ?? "",
+        date_of_joining: p.date_of_joining
+          ? new Date(p.date_of_joining).toISOString().split("T")[0]
+          : "",
+
+        // Parent fields (from profile)
+        relation: p.relation,
+        childID:  p.child?._id ?? "",
       });
     }
   }, [user, open, isEditing, form]);
@@ -130,40 +143,38 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
 
       const updateData: UpdateUserData = {
         first_name: data.first_name,
-        last_name: data.last_name,
-        name: `${data.first_name} ${data.last_name}`,
-        phone: data.phone,
-        gender: data.gender,
+        last_name:  data.last_name,
+        phone:      data.phone,
+        gender:     data.gender,
       };
 
       const role = user.role;
 
-      if (role === 'student') {
-        updateData.student = {
-          adm_number: data.adm_number,
-          adm_year: data.adm_year,
-          candidate_code: data.candidate_code,
-          department: data.department,
-          date_of_birth: data.date_of_birth || undefined,
-        };
-      } else if (['teacher', 'hod', 'principal', 'staff', 'admin'].includes(role)) {
-         if (role !== 'admin') {
-            updateData.teacher = {
-                designation: data.designation,
-                department: data.department,
-                date_of_joining: data.date_of_joining || undefined,
-            };
-         }
-      } else if (role === 'parent') {
-        updateData.parent = {
-          relation: data.relation,
-          childID: data.childID,
-        };
+      // Build profile sub-object based on role
+      const profile: UpdateUserData["profile"] = {};
+
+      if (role === "student") {
+        profile.adm_number     = data.adm_number;
+        profile.adm_year       = data.adm_year;
+        profile.candidate_code = data.candidate_code;
+        profile.department     = data.department;
+        profile.date_of_birth  = data.date_of_birth || undefined;
+      } else if (["teacher", "hod", "principal", "staff", "admin"].includes(role)) {
+        profile.designation     = data.designation;
+        profile.department      = data.department;
+        profile.date_of_joining = data.date_of_joining || undefined;
+      } else if (role === "parent") {
+        profile.relation = data.relation;
+        profile.childID  = data.childID;
       }
 
-      await updateUserById(user.id.user, updateData);
-      if (onSuccess) onSuccess(); // Notify parent to refresh list
-      setIsEditing(false); // Switch back to view mode
+      if (Object.keys(profile).length > 0) {
+        updateData.profile = profile;
+      }
+
+      await updateUserById(user._id, updateData);
+      if (onSuccess) onSuccess();
+      setIsEditing(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update user");
     } finally {
@@ -171,14 +182,13 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
+  const getInitials = (name: string) =>
+    name
       .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
@@ -190,26 +200,16 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
   };
 
   const role = user.role;
-  const isStudent = role === 'student';
-  const isParent = role === 'parent';
-  const isStaff = ['teacher', 'hod', 'principal', 'staff'].includes(role);
+  const isStudent = role === "student";
+  const isParent  = role === "parent";
+  const isStaff   = ["teacher", "hod", "principal", "staff"].includes(role);
 
-  const hasBasicProfile = Boolean(user.first_name && user.last_name);
-  const hasStudentProfile = !isStudent
-    ? true
-    : Boolean(
-        user.batch &&
-          user.adm_number &&
-          user.adm_year &&
-          user.department &&
-          user.date_of_birth
-      );
-  const hasStaffProfile = !isStaff
-    ? true
-    : Boolean(user.designation && user.department && user.date_of_joining);
-  const hasParentProfile = !isParent
-    ? true
-    : Boolean(user.relation && user.child?._id);
+  // Read from profile for completeness checks
+  const p = (user.profile ?? {}) as any;
+  const hasBasicProfile   = Boolean(user.first_name && user.last_name);
+  const hasStudentProfile = !isStudent ? true : Boolean(p.batch && p.adm_number && p.adm_year && p.department && p.date_of_birth);
+  const hasStaffProfile   = !isStaff   ? true : Boolean(p.designation && p.department && p.date_of_joining);
+  const hasParentProfile  = !isParent  ? true : Boolean(p.relation && p.child?._id);
   const isProfileIncomplete = !(hasBasicProfile && hasStudentProfile && hasStaffProfile && hasParentProfile);
 
   return (
@@ -218,13 +218,14 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-6">
-              {/* Left Column: Avatar & Quick Info */}
+
+              {/* ── Left Column: Avatar & Quick Info ── */}
               <div className="space-y-4">
                 <div className="relative flex flex-col items-center text-center p-6 border rounded-lg bg-muted/30">
                   {!isEditing && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="absolute right-2 top-2 h-8 w-8 text-muted-foreground hover:text-foreground"
                       onClick={() => setIsEditing(true)}
                     >
@@ -237,7 +238,7 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                     <AvatarFallback className="text-2xl">{getInitials(user.name)}</AvatarFallback>
                   </Avatar>
                   <h3 className="text-2xl font-semibold mb-1">{user.name}</h3>
-                  <div 
+                  <div
                     className="group relative flex items-center gap-2 cursor-pointer hover:bg-muted/50 px-2 py-1 round transition-colors"
                     onClick={() => navigator.clipboard.writeText(user.email)}
                     title="Click to copy email"
@@ -253,19 +254,21 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                     </Badge>
                   )}
                 </div>
-                
+
+                {/* Account Meta */}
                 <div className="border rounded-lg p-4 space-y-3">
-                  <h4 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground border-b pb-2">Account Meta</h4>
+                  <h4 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground border-b pb-2">
+                    Account Meta
+                  </h4>
                   <div className="space-y-2 text-sm">
-                    <InfoItem label="User ID" value={user.id.user} />
-                    <InfoItem label="Record ID" value={user.id.record} />
+                    <InfoItem label="User ID"    value={user._id} />
                     <InfoItem label="Created At" value={formatDate(user.createdAt)} />
                     <InfoItem label="Updated At" value={formatDate(user.updatedAt)} />
                   </div>
                 </div>
               </div>
 
-              {/* Right Column: Detailed Information or Form */}
+              {/* ── Right Column: Details / Edit Form ── */}
               <div className="space-y-6">
                 {error && (
                   <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md flex items-center gap-2">
@@ -274,7 +277,7 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                   </div>
                 )}
 
-                {/* Section: Basic Information */}
+                {/* Basic Information */}
                 <div className="space-y-4">
                   <h4 className="font-semibold text-lg flex items-center gap-2 border-b pb-2">
                     Basic Information
@@ -310,7 +313,11 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                           <FormItem>
                             <FormLabel>Phone</FormLabel>
                             <FormControl>
-                              <Input type="number" {...field} onChange={e => field.onChange(e.target.valueAsNumber || undefined)} />
+                              <Input
+                                type="number"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.valueAsNumber || undefined)}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -341,24 +348,24 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                      <InfoItem label="First Name" value={user.first_name} />
-                      <InfoItem label="Last Name" value={user.last_name} />
-                      <InfoItem label="Email" value={user.email} />
-                      <InfoItem label="Phone" value={user.phone?.toString()} />
-                      <InfoItem label="Gender" value={user.gender} />
+                      <InfoItem label="First Name"     value={user.first_name} />
+                      <InfoItem label="Last Name"      value={user.last_name} />
+                      <InfoItem label="Email"          value={user.email} />
+                      <InfoItem label="Phone"          value={user.phone?.toString()} />
+                      <InfoItem label="Gender"         value={user.gender} />
                       <InfoItem label="Email Verified" value={user.emailVerified ? "Yes" : "No"} />
                     </div>
                   )}
                 </div>
 
-                {/* Section: Academic / Staff / Parent Information */}
+                {/* Role-specific section */}
                 {(isStudent || isStaff || isParent) && (
                   <div className="space-y-4">
                     <h4 className="font-semibold text-lg flex items-center gap-2 border-b pb-2">
-                       {isStudent ? 'Academic Information' : isStaff ? 'Staff Information' : 'Parent Information'}
+                      {isStudent ? "Academic Information" : isStaff ? "Staff Information" : "Parent Information"}
                     </h4>
 
-                    {/* Student Form Inputs / View */}
+                    {/* Student */}
                     {isStudent && (
                       isEditing ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -380,7 +387,11 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                               <FormItem>
                                 <FormLabel>Admission Year</FormLabel>
                                 <FormControl>
-                                  <Input type="number" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} />
+                                  <Input
+                                    type="number"
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -435,25 +446,23 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                          <InfoItem label="Admission No." value={user.adm_number} />
-                          <InfoItem label="Admission Year" value={user.adm_year?.toString()} />
-                          <InfoItem label="Candidate Code" value={user.candidate_code} />
-                          <InfoItem label="Department" value={user.department} />
-                          <InfoItem label="Date of Birth" value={formatDate(user.date_of_birth)} />
-                          {user.batch && (
+                          <InfoItem label="Admission No."   value={p.adm_number} />
+                          <InfoItem label="Admission Year"  value={p.adm_year?.toString()} />
+                          <InfoItem label="Candidate Code"  value={p.candidate_code} />
+                          <InfoItem label="Department"      value={p.department} />
+                          <InfoItem label="Date of Birth"   value={formatDate(p.date_of_birth)} />
+                          {p.batch && (
                             <>
                               <InfoItem
                                 label="Batch"
-                                value={
-                                  typeof user.batch === "string" ? user.batch : user.batch?.name
-                                }
+                                value={typeof p.batch === "string" ? p.batch : p.batch?.name}
                               />
                               <InfoItem
                                 label="Batch Year"
                                 value={
-                                  typeof user.batch === "string"
+                                  typeof p.batch === "string"
                                     ? undefined
-                                    : user.batch?.year?.toString() ?? user.batch?.adm_year?.toString()
+                                    : p.batch?.adm_year?.toString()
                                 }
                               />
                             </>
@@ -462,7 +471,7 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                       )
                     )}
 
-                    {/* Staff Form Inputs / View */}
+                    {/* Staff */}
                     {isStaff && (
                       isEditing ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -515,16 +524,16 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                           <InfoItem label="Designation" value={user.designation} />
-                           <InfoItem label="Department" value={user.department} />
-                           <InfoItem label="Date of Joining" value={formatDate(user.date_of_joining)} />
+                          <InfoItem label="Designation"   value={p.designation} />
+                          <InfoItem label="Department"    value={p.department} />
+                          <InfoItem label="Date of Joining" value={formatDate(p.date_of_joining)} />
                         </div>
                       )
                     )}
 
-                    {/* Parent Form Inputs / View */}
+                    {/* Parent */}
                     {isParent && (
-                       isEditing ? (
+                      isEditing ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
@@ -553,26 +562,33 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
                             name="childID"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Child ID</FormLabel>
+                                <FormLabel>Child User ID</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Enter child user ID" />
+                                  <Input {...field} placeholder="Enter child user _id" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
                         </div>
-                       ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                             <InfoItem label="Relation" value={user.relation} />
-                              {user.child && (
-                                <>
-                                  <InfoItem label="Child Name" value={user.child?.user?.name} />
-                                  <InfoItem label="Child Admission No." value={user.child.adm_number} />
-                                </>
-                              )}
-                          </div>
-                       )
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                          <InfoItem label="Relation"   value={p.relation} />
+                          {p.child && (
+                            <>
+                              <InfoItem
+                                label="Child Name"
+                                value={
+                                  p.child?.first_name
+                                    ? `${p.child.first_name} ${p.child.last_name}`
+                                    : undefined
+                                }
+                              />
+                              <InfoItem label="Child Email" value={p.child?.email} />
+                            </>
+                          )}
+                        </div>
+                      )
                     )}
                   </div>
                 )}
@@ -582,7 +598,12 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
             <DialogFooter className="mt-8 flex items-center justify-end gap-2">
               {isEditing ? (
                 <>
-                  <Button type="button" variant="outline" onClick={() => setIsEditing(false)} disabled={isLoading}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsEditing(false)}
+                    disabled={isLoading}
+                  >
                     Cancel
                   </Button>
                   <Button type="submit" disabled={isLoading}>
@@ -603,6 +624,8 @@ export function UserDialog({ user, open, onOpenChange, onSuccess, initialMode = 
   );
 }
 
+// ─── InfoItem ─────────────────────────────────────────────────────────────────
+
 function InfoItem({ label, value }: { label: string; value?: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -614,21 +637,25 @@ function InfoItem({ label, value }: { label: string; value?: string }) {
   };
 
   return (
-    <div 
+    <div
       onClick={handleCopy}
       className={cn(
         "space-y-1 px-3 py-2 rounded-md transition-colors group relative select-none",
-        value && value !== "N/A" ? "cursor-pointer hover:bg-muted/50 active:bg-muted" : "cursor-default"
+        value && value !== "N/A"
+          ? "cursor-pointer hover:bg-muted/50 active:bg-muted"
+          : "cursor-default"
       )}
       title={value && value !== "N/A" ? "Click to copy" : undefined}
     >
       <div className="flex justify-between items-center text-xs font-medium text-muted-foreground uppercase tracking-wide">
         <span>{label}</span>
         {value && value !== "N/A" && (
-          <span className={cn(
-            "transition-opacity duration-200",
-            copied ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          )}>
+          <span
+            className={cn(
+              "transition-opacity duration-200",
+              copied ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            )}
+          >
             {copied ? (
               <Check className="h-3 w-3 text-green-500" />
             ) : (

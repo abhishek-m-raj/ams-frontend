@@ -72,12 +72,12 @@ export default function ProfilePage() {
                   <>
                     <div className="flex">
                       <span className="font-medium w-28">Admission No:</span>
-                      <span>{user.adm_number ?? "—"}</span>
+                      <span>{(user.profile as any)?.adm_number ?? "—"}</span>
                     </div>
 
                     <div className="flex">
                       <span className="font-medium w-28">Department:</span>
-                      <span>{user.department ?? "—"}</span>
+                      <span>{(user.profile as any)?.department ?? "—"}</span>
                     </div>
                   </>
                 )}

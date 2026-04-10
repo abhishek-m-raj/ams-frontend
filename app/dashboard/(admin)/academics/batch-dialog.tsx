@@ -206,9 +206,9 @@ export function BatchDialog({ batch, open, onOpenChange, mode, onSuccess }: Batc
               {batch.staff_advisor ? (
                 <div className="mt-1">
                   <p className="text-base">
-                    {batch.staff_advisor.user.first_name} {batch.staff_advisor.user.last_name}
+                    {batch.staff_advisor.first_name} {batch.staff_advisor.last_name}
                   </p>
-                  <p className="text-sm text-muted-foreground">{batch.staff_advisor.user.email}</p>
+                  <p className="text-sm text-muted-foreground">{batch.staff_advisor.email}</p>
                 </div>
               ) : (
                 <p className="text-base text-muted-foreground">No advisor assigned</p>

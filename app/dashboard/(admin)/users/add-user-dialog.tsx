@@ -35,31 +35,31 @@ import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// Form schema for creating a new user
-const createUserFormSchema = z.object({
-  name: z
-    .string()
-    .min(3, "Name must be at least 3 characters")
-    .refine((v) => v.trim().split(/\s+/).length >= 2, "Enter first and last name"),
-  email: z.string().email("Invalid email address"),
-  role: z.enum(["student", "teacher", "parent", "hod", "principal", "staff", "admin"] as const),
-  password: z.string().min(8, "Password must be at least 8 characters").optional().or(z.literal("")),
-  // Student-only
-  batch: z.string().optional(),
-  adm_number: z.string().optional(),
-  adm_year: z.union([z.string(), z.number()]).optional(),
-  candidate_code: z.string().optional(),
-  department: z.enum(["CSE", "ECE", "IT"] as const).optional(),
-  date_of_birth: z.string().optional(),
-}).superRefine((val, ctx) => {
-  if (val.role === "student" && !val.batch) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Batch is required for students",
-      path: ["batch"],
-    });
-  }
-});
+// Form schema — first_name + last_name instead of a single name field
+const createUserFormSchema = z
+  .object({
+    first_name: z.string().min(1, "First name is required"),
+    last_name: z.string().min(1, "Last name is required"),
+    email: z.string().email("Invalid email address"),
+    role: z.enum(["student", "teacher", "parent", "hod", "principal", "staff", "admin"] as const),
+    password: z.string().min(8, "Password must be at least 8 characters").optional().or(z.literal("")),
+    // Student-only
+    batch: z.string().optional(),
+    adm_number: z.string().optional(),
+    adm_year: z.union([z.string(), z.number()]).optional(),
+    candidate_code: z.string().optional(),
+    department: z.enum(["CSE", "ECE", "IT"] as const).optional(),
+    date_of_birth: z.string().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.role === "student" && !val.batch) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Batch is required for students",
+        path: ["batch"],
+      });
+    }
+  });
 
 type CreateUserFormValues = z.infer<typeof createUserFormSchema>;
 
@@ -80,7 +80,8 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
   const form = useForm<CreateUserFormValues>({
     resolver: zodResolver(createUserFormSchema),
     defaultValues: {
-      name: "",
+      first_name: "",
+      last_name: "",
       email: "",
       role: "student",
       password: "",
@@ -119,7 +120,6 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
 
   const handleDialogChange = (isOpen: boolean) => {
     if (!isOpen) {
-      // Reset form and clear errors when dialog closes
       form.reset();
       setError(null);
       setSuccessMessage(null);
@@ -134,61 +134,46 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       setError(null);
       setSuccessMessage(null);
 
-      const nameParts = data.name.trim().split(/\s+/);
-      if (nameParts.length < 2) {
-        setError("Please enter both first name and last name.");
-        return;
-      }
-      const first_name = nameParts.slice(0, -1).join(" ");
-      const last_name = nameParts[nameParts.length - 1] || "";
-
       const payload: BulkCreateUserData = {
-        first_name,
-        last_name,
+        first_name: data.first_name,
+        last_name: data.last_name,
         email: data.email,
         role: data.role,
       };
 
-      if (data.password) {
-        payload.password = data.password;
-      }
+      if (data.password) payload.password = data.password;
 
       if (data.role === "student") {
         payload.batch = data.batch;
         if (data.adm_number) payload.adm_number = data.adm_number;
         if (data.adm_year) {
           const parsedYear = Number(data.adm_year);
-          if (!isNaN(parsedYear)) {
-            payload.adm_year = parsedYear;
-          }
+          if (!isNaN(parsedYear)) payload.adm_year = parsedYear;
         }
         if (data.candidate_code) payload.candidate_code = data.candidate_code;
-        if (data.department) payload.department = data.department as Department;
-        if (data.date_of_birth) payload.date_of_birth = data.date_of_birth;
+        if (data.department)     payload.department = data.department as Department;
+        if (data.date_of_birth)  payload.date_of_birth = data.date_of_birth;
       }
 
       // Use bulk endpoint with single user in array
       const response = await createUsersBulk([payload]);
-      
-      // Check if the user creation failed
+
       if (response.data?.failed && response.data.failed.length > 0) {
         setError(response.data.failed[0].error || "Failed to create user");
         return;
       }
-      
-      // Check if user was successfully created
+
       if (response.data?.success && response.data.success.length > 0) {
         setSuccessMessage("User created successfully!");
       } else {
         const firstError = response.data?.failed?.[0]?.error;
         setSuccessMessage(firstError || "User created successfully!");
       }
-      
+
       setTimeout(() => {
         form.reset();
         setSuccessMessage(null);
         onOpenChange(false);
-        
         if (onSuccess) onSuccess();
       }, 2000);
     } catch (err) {
@@ -227,20 +212,37 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* First Name */}
                 <FormField
                   control={form.control}
-                  name="name"
+                  name="first_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Full Name *</FormLabel>
+                      <FormLabel>First Name *</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} />
+                        <Input placeholder="John" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
+                {/* Last Name */}
+                <FormField
+                  control={form.control}
+                  name="last_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Email */}
                 <FormField
                   control={form.control}
                   name="email"
@@ -255,6 +257,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                   )}
                 />
 
+                {/* Role */}
                 <FormField
                   control={form.control}
                   name="role"
@@ -282,6 +285,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                   )}
                 />
 
+                {/* Password */}
                 <FormField
                   control={form.control}
                   name="password"
@@ -318,6 +322,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
               </div>
             </div>
 
+            {/* Student-specific fields */}
             {selectedRole === "student" && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Academic Information (Student)</h3>
@@ -340,26 +345,26 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                                 {opt.label}
                               </SelectItem>
                             ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="adm_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Admission Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="ADM2024001" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="adm_number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Admission Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="ADM2024001" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
@@ -368,7 +373,12 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                       <FormItem>
                         <FormLabel>Admission Year</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="2024" value={field.value ?? ""} onChange={field.onChange} />
+                          <Input
+                            type="number"
+                            placeholder="2024"
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

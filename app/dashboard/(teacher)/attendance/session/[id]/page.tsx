@@ -70,9 +70,12 @@ export default function SessionAttendanceMethodsPage() {
 
         // Fetch all students (listUsers now handles fallback to dummy data)
         const usersResponse = await listUsers({ role: 'student', limit: 1000 });
-        const filteredStudents = usersResponse.users.filter(
-          (user) => (typeof user.batch === 'string' ? user.batch : user.batch?._id) === (typeof sessionData.batch === 'string' ? sessionData.batch : sessionData.batch?._id)
-        );
+        const sessionBatchId = typeof sessionData.batch === 'string' ? sessionData.batch : sessionData.batch?._id;
+        const filteredStudents = usersResponse.users.filter((user) => {
+          const p = (user.profile ?? {}) as any;
+          const studentBatchId = typeof p.batch === 'string' ? p.batch : p.batch?._id;
+          return studentBatchId === sessionBatchId;
+        });
         const batchStudents = filteredStudents.length > 0 ? filteredStudents : usersResponse.users;
 
         setStudents(batchStudents);
@@ -292,7 +295,7 @@ export default function SessionAttendanceMethodsPage() {
                   >
                     <div className="flex-1">
                       <p className="font-medium text-sm">{student.name}</p>
-                      <p className="text-xs text-muted-foreground">{student.adm_number || 'N/A'}</p>
+                      <p className="text-xs text-muted-foreground">{(student.profile as any)?.adm_number || 'N/A'}</p>
                     </div>
                     <Button
                       variant={isPresent ? "default" : "outline"}

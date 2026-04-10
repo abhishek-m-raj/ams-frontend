@@ -78,14 +78,16 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
   const searchParams = useSearchParams();
   const {user, incompleteProfile, isLoading : isPending, session, refetchUser} = useAuth();
 
+  const ip = (incompleteProfile as any);
+  const ipProfile = (ip?.profile ?? ip ?? {}) as any;
   const locked = {
-    name: Boolean(incompleteProfile?.first_name || incompleteProfile?.last_name || incompleteProfile?.name),
-    batch: Boolean(incompleteProfile?.batch),
-    admissionNumber: Boolean(incompleteProfile?.adm_number),
-    admissionYear: Boolean(incompleteProfile?.adm_year),
-    candidateCode: Boolean(incompleteProfile?.candidate_code),
-    department: Boolean(incompleteProfile?.department),
-    dateOfBirth: Boolean(incompleteProfile?.date_of_birth),
+    name: Boolean(incompleteProfile?.first_name || incompleteProfile?.last_name || (incompleteProfile as any)?.name),
+    batch: Boolean(ipProfile?.batch),
+    admissionNumber: Boolean(ipProfile?.adm_number),
+    admissionYear: Boolean(ipProfile?.adm_year),
+    candidateCode: Boolean(ipProfile?.candidate_code),
+    department: Boolean(ipProfile?.department),
+    dateOfBirth: Boolean(ipProfile?.date_of_birth),
   };
 
   useEffect(() => {
@@ -126,12 +128,13 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
 
     const profile = (incompleteProfile ?? user) as User;
     const role = incompleteProfile?.role || user.role;
+    const p = ((profile as any).profile ?? profile) as any;
 
     const fullName = profile.name || user.name || '';
     const inferredFirstName = fullName.split(' ')[0] || '';
     const inferredLastName = fullName.split(' ').slice(1).join(' ') || '';
 
-    const batchValue = profile.batch ?? user.batch;
+    const batchValue = p.batch ?? (profile as any).batch;
     const batchId = typeof batchValue === 'string' ? batchValue : batchValue?._id;
 
     setFormData({
@@ -140,13 +143,13 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
       phone: String(profile.phone ?? user.phone ?? ''),
       gender: (profile.gender || user.gender || '') as string,
       batch: batchId || '',
-      admissionNumber: profile.adm_number || user.adm_number || '',
-      admissionYear: profile.adm_year ? String(profile.adm_year) : user.adm_year ? String(user.adm_year) : '',
-      candidateCode: profile.candidate_code || user.candidate_code || '',
-      department: (profile.department || user.department || '') as string,
-      dateOfBirth: toInputDate(profile.date_of_birth || user.date_of_birth),
-      designation: role === 'teacher' ? (profile.designation || user.designation || '') : '',
-      dateOfJoining: toInputDate(role === 'teacher' ? (profile.date_of_joining || user.date_of_joining) : undefined),
+      admissionNumber: p.adm_number || '',
+      admissionYear: p.adm_year ? String(p.adm_year) : '',
+      candidateCode: p.candidate_code || '',
+      department: (p.department || '') as string,
+      dateOfBirth: toInputDate(p.date_of_birth),
+      designation: role === 'teacher' ? (p.designation || '') : '',
+      dateOfJoining: toInputDate(role === 'teacher' ? p.date_of_joining : undefined),
     });
 
     setIsLoading(false);
@@ -211,23 +214,22 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
         },
         credentials: 'include',
         body: JSON.stringify({
-          name: user?.name,
           first_name: formData.firstName,
           last_name: formData.lastName,
           phone: phoneNumber,
           gender: formData.gender,
-          ...(user?.role === 'student' ? {student: {
+          profile: user?.role === 'student' ? {
             batch: formData.batch,
             adm_number: formData.admissionNumber,
             adm_year: admissionYear,
             candidate_code: formData.candidateCode,
             department: formData.department,
             date_of_birth: formData.dateOfBirth,
-          }} : { teacher: {
+          } : {
             designation: formData.designation,
             department: formData.department,
             date_of_joining: formData.dateOfJoining,
-          }}),
+          },
         }),
       });
 

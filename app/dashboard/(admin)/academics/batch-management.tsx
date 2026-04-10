@@ -233,9 +233,9 @@ export function BatchManagement() {
                           {batch.staff_advisor ? (
                             <div>
                               <div className="font-medium">
-                                {batch.staff_advisor.user.first_name} {batch.staff_advisor.user.last_name}
+                                {batch.staff_advisor.first_name} {batch.staff_advisor.last_name}
                               </div>
-                              <div className="text-sm text-muted-foreground">{batch.staff_advisor.user.email}</div>
+                              <div className="text-sm text-muted-foreground">{batch.staff_advisor.email}</div>
                             </div>
                           ) : (
                             <span className="text-muted-foreground">No advisor</span>

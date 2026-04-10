@@ -35,6 +35,10 @@ export default function ProfileForm({
   const [editing, setEditing] = useState<boolean>(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
+  const onProfileChange = (k: string, v: unknown) => {
+    setUser((s) => s ? ({ ...s, profile: { ...(s.profile ?? {}), [k]: v } }) : s);
+  };
+
   const onChange = <K extends keyof User>(k: K, v: User[K]) => {
     setUser((s) => (s ? ({ ...s, [k]: v }) : s));
   };
@@ -146,30 +150,30 @@ export default function ProfileForm({
           {user.role === "student" && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
               <FormField label="Admission Number">
-                <Input value={user.adm_number || ""} onChange={(e) => onChange("adm_number", e.target.value)} disabled={!editing} />
+                <Input value={(user.profile as any)?.adm_number || ""} onChange={(e) => onProfileChange("adm_number", e.target.value)} disabled={!editing} />
               </FormField>
 
               <FormField label="Admission Year">
                 <Input
-                  value={user.adm_year ? String(user.adm_year) : ""}
+                  value={(user.profile as any)?.adm_year ? String((user.profile as any).adm_year) : ""}
                   onChange={(e) => {
                     const value = e.target.value.trim();
-                    onChange("adm_year", value ? Number(value) : undefined);
+                    onProfileChange("adm_year", value ? Number(value) : undefined);
                   }}
                   disabled={!editing}
                 />
               </FormField>
 
               <FormField label="Candidate Code">
-                <Input value={user.candidate_code || ""} onChange={(e) => onChange("candidate_code", e.target.value)} disabled={!editing} />
+                <Input value={(user.profile as any)?.candidate_code || ""} onChange={(e) => onProfileChange("candidate_code", e.target.value)} disabled={!editing} />
               </FormField>
 
               <FormField label="Department">
-                <Input value={user.department || ""} onChange={(e) => onChange("department", (e.target.value || undefined) as User["department"])} disabled={!editing} />
+                <Input value={(user.profile as any)?.department || ""} onChange={(e) => onProfileChange("department", e.target.value || undefined)} disabled={!editing} />
               </FormField>
 
               <FormField label="Date of Birth">
-                <Input type="date" value={user.date_of_birth || ""} onChange={(e) => onChange("date_of_birth", e.target.value)} disabled={!editing} />
+                <Input type="date" value={(user.profile as any)?.date_of_birth || ""} onChange={(e) => onProfileChange("date_of_birth", e.target.value)} disabled={!editing} />
               </FormField>
             </div>
           )}
@@ -177,7 +181,7 @@ export default function ProfileForm({
           {user.role === "parent" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               <FormField label="Relation">
-                <Input value={user.relation || ""} onChange={(e) => onChange("relation", (e.target.value || undefined) as User["relation"])} disabled={!editing} placeholder="Father / Mother / Guardian" />
+                <Input value={(user.profile as any)?.relation || ""} onChange={(e) => onProfileChange("relation", e.target.value || undefined)} disabled={!editing} placeholder="Father / Mother / Guardian" />
               </FormField>
             </div>
           )}
@@ -185,15 +189,15 @@ export default function ProfileForm({
           {(user.role != "student" && user.role != "parent") && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               <FormField label="Designation">
-                <Input value={user.designation || ""} onChange={(e) => onChange("designation", e.target.value)} disabled={!editing} />
+                <Input value={(user.profile as any)?.designation || ""} onChange={(e) => onProfileChange("designation", e.target.value)} disabled={!editing} />
               </FormField>
 
               <FormField label="Department">
-                <Input value={user.department || ""} onChange={(e) => onChange("department", (e.target.value || undefined) as User["department"])} disabled={!editing} />
+                <Input value={(user.profile as any)?.department || ""} onChange={(e) => onProfileChange("department", e.target.value || undefined)} disabled={!editing} />
               </FormField>
 
               <FormField label="Date of Joining">
-                <Input type="date" value={user.date_of_joining || ""} onChange={(e) => onChange("date_of_joining", e.target.value)} disabled={!editing} />
+                <Input type="date" value={(user.profile as any)?.date_of_joining || ""} onChange={(e) => onProfileChange("date_of_joining", e.target.value)} disabled={!editing} />
               </FormField>
             </div>
           )}
