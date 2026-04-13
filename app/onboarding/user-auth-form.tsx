@@ -12,7 +12,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth-context';
-import { listBatches, Batch } from '@/lib/api/batch';
 import type { User } from '@/lib/types/UserTypes';
 
 const departments = [
@@ -65,8 +64,6 @@ type UserAuthFormProps = React.HTMLAttributes<HTMLDivElement>
 export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [isBatchesLoading, setIsBatchesLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     firstName: '', lastName: '', phone: '', gender: '',
     batch: '',
@@ -89,23 +86,6 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
     department: Boolean(ipProfile?.department),
     dateOfBirth: Boolean(ipProfile?.date_of_birth),
   };
-
-  useEffect(() => {
-    const loadBatches = async () => {
-      if (!session || user?.role !== 'student') return;
-      try {
-        setIsBatchesLoading(true);
-        const result = await listBatches({ page: 1, limit: 100 });
-        setBatches(result.batches);
-      } catch (e) {
-        console.error('Failed to load batches', e);
-      } finally {
-        setIsBatchesLoading(false);
-      }
-    };
-
-    loadBatches();
-  }, [session, user?.role]);
 
   useEffect(() => {
     if (isPending || !user) return;
@@ -313,16 +293,18 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
         {/* Role-Specific Fields */}
         {user?.role === 'student' ? (
           <>
-            <SelectField
-              id="batch"
-              label="Batch"
-              value={formData.batch}
-              error={errors.batch}
-              placeholder={isBatchesLoading ? "Loading batches..." : "Select batch"}
-              disabled={locked.batch || isBatchesLoading}
-              options={batches.map((b) => ({ value: b._id, label: `${b.name} (${b.adm_year})` }))}
-              onValueChange={(value) => handleInputChange('batch', value)}
-            />
+            {/* Only show batch field if it wasn't pre-filled during bulk import */}
+            {!locked.batch && (
+              <FormField 
+                id="batch" 
+                label="Batch" 
+                placeholder="e.g., 2026-2030 or IT" 
+                value={formData.batch} 
+                error={errors.batch} 
+                disabled={locked.batch} 
+                onChange={handleInputEvent} 
+              />
+            )}
             <div className="grid grid-cols-2 gap-3">
               <FormField id="admissionNumber" label="Admission No." placeholder="29CSE555" value={formData.admissionNumber} error={errors.admissionNumber} disabled={locked.admissionNumber} onChange={handleInputEvent} />
               <FormField id="admissionYear" label="Admission Year" type="number" placeholder="2026" value={formData.admissionYear} error={errors.admissionYear} disabled={locked.admissionYear} onChange={handleInputEvent} />
