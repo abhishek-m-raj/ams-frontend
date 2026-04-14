@@ -216,11 +216,20 @@ export default function CsvAttendancePage() {
         setSession(data);
         await loadBatchStudents(data.batch._id);
 
-        // Load existing attendance records for this session
+        // Load existing attendance records for this session with pagination
         try {
-          const recordsResponse = await listAttendanceRecords({ session: sessionId, limit: 1000 });
+          let allRecords: AttendanceRecord[] = [];
+          let page = 1;
+          let totalPages = 1;
+          do {
+            const response = await listAttendanceRecords({ session: sessionId, limit: 100, page });
+            allRecords = [...allRecords, ...response.records];
+            totalPages = response.pagination?.totalPages || 1;
+            page++;
+          } while (page <= totalPages);
+          
           const recordsMap = new Map<string, AttendanceRecord>();
-          recordsResponse.records.forEach((record) => {
+          allRecords.forEach((record) => {
             recordsMap.set(record.student._id, record);
           });
           setExistingRecords(recordsMap);
@@ -355,14 +364,17 @@ export default function CsvAttendancePage() {
                 Matched Students ({matchedStudents.length})
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
-                {matchedStudents.map((student) => (
-                  <div key={student.studentId} className="flex items-center gap-2 text-sm bg-white dark:bg-background p-2 rounded border border-green-200 dark:border-green-900">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center border border-primary shrink-0">
-                      <span className="text-xs font-semibold text-primary">{student.rollNo}</span>
+                {matchedStudents.map((student) => {
+                  const displayRoll = student.rollNo.replace(/^0+/, '') || '0';
+                  return (
+                    <div key={student.studentId} className="flex items-center gap-2 text-sm bg-white dark:bg-background p-2 rounded border border-green-200 dark:border-green-900">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center border border-primary shrink-0">
+                        <span className="text-xs font-semibold text-primary">{displayRoll}</span>
+                      </div>
+                      <span className="text-foreground">{student.studentName}</span>
                     </div>
-                    <span className="text-foreground">{student.studentName}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
