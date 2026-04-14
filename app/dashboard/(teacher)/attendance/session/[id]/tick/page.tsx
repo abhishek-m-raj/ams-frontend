@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Calendar, Clock, Users, BookOpen, Check, X, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { getAttendanceSessionById, type AttendanceSession } from "@/lib/api/attendance-session";
-import { createBulkAttendanceRecords, type AttendanceStatus } from "@/lib/api/attendance-record";
+import { createBulkAttendanceRecords, listAttendanceRecords, updateAttendanceRecordById, type AttendanceStatus, type AttendanceRecord } from "@/lib/api/attendance-record";
 import { listUsers, type User } from "@/lib/api/user";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +28,7 @@ export default function TickAttendancePage() {
   const [history, setHistory] = useState<Array<{ studentId: string; previous?: AttendanceStatus }>>([]);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [existingRecords, setExistingRecords] = useState<Map<string, AttendanceRecord>>(new Map());
 
   const loadBatchStudents = useCallback(async (batchId: string) => {
     setLoadingStudents(true);
@@ -42,6 +43,13 @@ export default function TickAttendancePage() {
         batchStudents.push(...response.users);
         page += 1;
       }
+
+      // Sort students in ascending order by name
+      batchStudents.sort((a, b) => {
+        const nameA = (a.name || '').toLowerCase();
+        const nameB = (b.name || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
 
       setStudents(batchStudents);
     } catch (error) {
@@ -58,6 +66,33 @@ export default function TickAttendancePage() {
       const data = await getAttendanceSessionById(sessionId);
       setSession(data);
       await loadBatchStudents(data.batch._id);
+
+      // Load existing attendance records for this session
+      try {
+        let allRecords: AttendanceRecord[] = [];
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const response = await listAttendanceRecords({ session: sessionId, limit: 100, page });
+          allRecords = [...allRecords, ...response.records];
+          totalPages = response.pagination?.totalPages || 1;
+          page++;
+        } while (page <= totalPages);
+
+        const recordsMap = new Map<string, AttendanceRecord>();
+        const statusMap: Record<string, AttendanceStatus> = {};
+
+        allRecords.forEach((record) => {
+          recordsMap.set(record.student._id, record);
+          statusMap[record.student._id] = record.status;
+        });
+
+        setExistingRecords(recordsMap);
+        setMarkedStatuses(statusMap);
+      } catch (error) {
+        console.warn("Failed to load existing attendance records:", error);
+        setExistingRecords(new Map());
+      }
     } catch (error) {
       console.error("Failed to load session:", error);
     } finally {
@@ -100,18 +135,58 @@ export default function TickAttendancePage() {
   const submitAttendance = async () => {
     if (!session || students.length === 0) return;
 
-    const records = students.map((student) => ({
-      student: student._id!,
-      status: markedStatuses[student._id!] ?? "absent",
-    }));
+    const createRecords: Array<{ student: string; status: AttendanceStatus }> = [];
+    const updateRecordsList: Array<{ recordId: string; status: AttendanceStatus }> = [];
+
+    students.forEach((student) => {
+      const status = markedStatuses[student._id!] ?? "absent";
+      const existingRecord = existingRecords.get(student._id!);
+
+      if (existingRecord) {
+        updateRecordsList.push({ recordId: existingRecord._id, status });
+      } else {
+        createRecords.push({ student: student._id!, status });
+      }
+    });
 
     setSaving(true);
     try {
-      await createBulkAttendanceRecords({
-        session: session._id,
-        records,
-      });
+      let createdCount = 0;
+      let updatedCount = 0;
+      let errorCount = 0;
+
+      // Execute creates
+      if (createRecords.length > 0) {
+        try {
+          const result = await createBulkAttendanceRecords({
+            session: session._id,
+            records: createRecords,
+          });
+          createdCount = (result.created ?? []).length;
+          errorCount = (result.errors ?? []).length;
+        } catch (error) {
+          console.error("Failed to create attendance records:", error);
+          errorCount += createRecords.length;
+        }
+      }
+
+      // Execute updates
+      for (const { recordId, status } of updateRecordsList) {
+        try {
+          await updateAttendanceRecordById(recordId, { status });
+          updatedCount++;
+        } catch (error) {
+          console.error(`Failed to update record ${recordId}:`, error);
+          errorCount++;
+        }
+      }
+
       setSaveSuccess(true);
+      const message =
+        errorCount > 0
+          ? `Saved ${createdCount + updatedCount} records (${createdCount} new, ${updatedCount} updated) with ${errorCount} errors`
+          : `Saved ${createdCount + updatedCount} records (${createdCount} new, ${updatedCount} updated)`;
+      alert(message);
     } catch (error) {
       console.error("Failed to save attendance:", error);
       alert(error instanceof Error ? error.message : "Failed to save attendance");
@@ -250,18 +325,20 @@ export default function TickAttendancePage() {
             <div className="space-y-3">
               {students.map((student) => {
                 const status = markedStatuses[student._id!];
+                const p = (student.profile as any) ?? {};
+                const candidateCode = p.candidate_code?.trim() ?? '';
+                const lastThreeDigits = candidateCode.slice(-3).replace(/^0+/, '') || 'N/A';
+                
                 return (
                   <div
                     key={student._id!}
                     className="flex flex-col gap-4 rounded-xl border p-4 md:flex-row md:items-center md:justify-between"
                   >
-                    <div className="space-y-1">
-                      <p className="font-semibold">{student.name}</p>
-                      <p className="text-sm text-muted-foreground">{student.email}</p>
-                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                        <span>Adm No: {(student.profile as any)?.adm_number ?? 'N/A'}</span>
-                        <span>Dept: {(student.profile as any)?.department ?? 'N/A'}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center border border-primary">
+                        <span className="text-xs font-semibold text-primary">{lastThreeDigits}</span>
                       </div>
+                      <p className="font-semibold">{student.name}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button

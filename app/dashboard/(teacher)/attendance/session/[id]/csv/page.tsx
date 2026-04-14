@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ArrowLeft, Calendar, Clock, FileSpreadsheet, CheckCircle2, CircleAlert } from "lucide-react";
 import { format } from "date-fns";
 import { getAttendanceSessionById, type AttendanceSession } from "@/lib/api/attendance-session";
-import { createBulkAttendanceRecords, type AttendanceStatus } from "@/lib/api/attendance-record";
+import { createBulkAttendanceRecords, updateAttendanceRecordById, listAttendanceRecords, type AttendanceStatus, type AttendanceRecord } from "@/lib/api/attendance-record";
 import { listUsers } from "@/lib/api/user";
 import type { User } from "@/lib/types/UserTypes";
 
@@ -32,14 +32,17 @@ export default function CsvAttendancePage() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [existingRecords, setExistingRecords] = useState<Map<string, AttendanceRecord>>(new Map());
 
   const normalizedRollMap = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, { studentId: string; studentName: string }>();
     students.forEach((student) => {
       const p = (student.profile ?? {}) as any;
-      const roll = p.adm_number?.trim();
-      if (!roll || !student._id) return;
-      map.set(roll.toLowerCase(), student._id);
+      const candidateCode = p.candidate_code?.trim();
+      if (!candidateCode || !student._id) return;
+      // Extract last 3 digits and normalize (pad with zeros)
+      const lastThreeDigits = candidateCode.slice(-3).padStart(3, '0');
+      map.set(lastThreeDigits, { studentId: student._id, studentName: student.name || '' });
     });
     return map;
   }, [students]);
@@ -53,17 +56,36 @@ export default function CsvAttendancePage() {
 
   const uniqueParsedRolls = useMemo(() => {
     const unique = new Set<string>();
-    parsedRolls.forEach((roll) => unique.add(roll.toLowerCase()));
+    parsedRolls.forEach((roll) => {
+      // Normalize input: pad with zeros to 3 digits
+      const normalized = roll.padStart(3, '0');
+      unique.add(normalized);
+    });
     return unique;
   }, [parsedRolls]);
 
   const matchingStudentIds = useMemo(() => {
     const ids = new Set<string>();
     uniqueParsedRolls.forEach((roll) => {
-      const studentId = normalizedRollMap.get(roll);
-      if (studentId) ids.add(studentId);
+      const match = normalizedRollMap.get(roll);
+      if (match) ids.add(match.studentId);
     });
     return ids;
+  }, [normalizedRollMap, uniqueParsedRolls]);
+
+  const matchedStudents = useMemo(() => {
+    const matched: { studentId: string; studentName: string; rollNo: string }[] = [];
+    uniqueParsedRolls.forEach((roll) => {
+      const match = normalizedRollMap.get(roll);
+      if (match) {
+        matched.push({
+          studentId: match.studentId,
+          studentName: match.studentName,
+          rollNo: roll,
+        });
+      }
+    });
+    return matched.sort((a, b) => a.studentName.localeCompare(b.studentName));
   }, [normalizedRollMap, uniqueParsedRolls]);
 
   const unknownRolls = useMemo(() => {
@@ -98,6 +120,13 @@ export default function CsvAttendancePage() {
         page++;
       }
 
+      // Sort students in ascending order by name
+      batchStudents.sort((a, b) => {
+        const nameA = (a.name || '').toLowerCase();
+        const nameB = (b.name || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+
       setStudents(batchStudents);
     } catch (error) {
       console.error("Failed to load students:", error);
@@ -115,10 +144,14 @@ export default function CsvAttendancePage() {
     setSaveMessage(null);
 
     try {
-      const records = students
-        .filter((student) => student._id)
-        .map((student) => {
-          const isListed = matchingStudentIds.has(student._id!);
+      const createRecords: Array<{ student: string; status: AttendanceStatus }> = [];
+      const updateRecordsList: Array<{ recordId: string; status: AttendanceStatus }> = [];
+
+      // Separate into create and update records
+      students.forEach((student) => {
+        if (!student._id) return;
+        
+        const isListed = matchingStudentIds.has(student._id);
         const status: AttendanceStatus =
           mode === "present"
             ? isListed
@@ -128,23 +161,44 @@ export default function CsvAttendancePage() {
               ? "absent"
               : "present";
 
-        return {
-          student: student._id!,
-          status,
-        };
+        const existingRecord = existingRecords.get(student._id);
+        if (existingRecord) {
+          updateRecordsList.push({ recordId: existingRecord._id, status });
+        } else {
+          createRecords.push({ student: student._id, status });
+        }
       });
 
-      const result = await createBulkAttendanceRecords({
-        session: session._id,
-        records,
-      });
+      let createdCount = 0;
+      let updatedCount = 0;
+      let errorCount = 0;
 
-      const createdCount = result.created.length;
-      const errorCount = result.errors.length;
+      // Create new records if any
+      if (createRecords.length > 0) {
+        const result = await createBulkAttendanceRecords({
+          session: session._id,
+          records: createRecords,
+        });
+        createdCount = (result.created ?? []).length;
+        errorCount += (result.errors ?? []).length;
+      }
+
+      // Update existing records
+      for (const { recordId, status } of updateRecordsList) {
+        try {
+          await updateAttendanceRecordById(recordId, { status });
+          updatedCount++;
+        } catch (err) {
+          console.error(`Failed to update record ${recordId}:`, err);
+          errorCount++;
+        }
+      }
+
+      const totalSaved = createdCount + updatedCount;
       setSaveMessage(
         errorCount > 0
-          ? `Saved ${createdCount} attendance records with ${errorCount} errors.`
-          : `Saved ${createdCount} attendance records successfully.`
+          ? `Saved ${totalSaved} records (${createdCount} new, ${updatedCount} updated) with ${errorCount} errors.`
+          : `Saved ${totalSaved} records successfully (${createdCount} new, ${updatedCount} updated).`
       );
     } catch (error) {
       console.error("Failed to save attendance:", error);
@@ -161,6 +215,19 @@ export default function CsvAttendancePage() {
         const data = await getAttendanceSessionById(sessionId);
         setSession(data);
         await loadBatchStudents(data.batch._id);
+
+        // Load existing attendance records for this session
+        try {
+          const recordsResponse = await listAttendanceRecords({ session: sessionId, limit: 1000 });
+          const recordsMap = new Map<string, AttendanceRecord>();
+          recordsResponse.records.forEach((record) => {
+            recordsMap.set(record.student._id, record);
+          });
+          setExistingRecords(recordsMap);
+        } catch (err) {
+          console.warn("Failed to load existing records:", err);
+          setExistingRecords(new Map());
+        }
       } catch (error) {
         console.error("Failed to load session:", error);
       } finally {
@@ -235,10 +302,10 @@ export default function CsvAttendancePage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
-            <CardTitle>Comma-Separated Roll Number Method</CardTitle>
+            <CardTitle>Last 3 Digits Method</CardTitle>
           </div>
           <CardDescription>
-            Choose whether the entered roll numbers are present or absent, then save attendance for the full class.
+            Enter the last 3 digits of candidate codes (comma or new line separated) to mark attendance for those students.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -270,7 +337,7 @@ export default function CsvAttendancePage() {
           <div className="space-y-2">
             <p className="text-sm font-medium">Roll numbers (comma or new line separated)</p>
             <Textarea
-              placeholder="e.g. 22CS001, 22CS003, 22CS010"
+              placeholder="e.g. 1, 3, 10 or 001, 003, 010 (last 3 digits - leading zeros optional)"
               value={rollInput}
               onChange={(e) => {
                 setRollInput(e.target.value);
@@ -280,6 +347,25 @@ export default function CsvAttendancePage() {
               className="min-h-28"
             />
           </div>
+
+          {/* Matched Students Real-time Display */}
+          {matchedStudents.length > 0 && (
+            <div className="rounded-lg border border-green-300 bg-green-50 dark:bg-green-950/20 dark:border-green-900 p-3 space-y-2">
+              <p className="text-sm font-semibold text-green-700 dark:text-green-300">
+                Matched Students ({matchedStudents.length})
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                {matchedStudents.map((student) => (
+                  <div key={student.studentId} className="flex items-center gap-2 text-sm bg-white dark:bg-background p-2 rounded border border-green-200 dark:border-green-900">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center border border-primary shrink-0">
+                      <span className="text-xs font-semibold text-primary">{student.rollNo}</span>
+                    </div>
+                    <span className="text-foreground">{student.studentName}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {loadingStudents ? (
             <Skeleton className="h-20 w-full" />

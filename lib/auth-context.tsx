@@ -69,6 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.status === 422) {
         // User needs to complete onboarding
+        // Add small delay to ensure state is settled before redirect
+        await new Promise(resolve => setTimeout(resolve, 100));
         setIsLoading(false);
         router.replace('/onboarding');
         return;

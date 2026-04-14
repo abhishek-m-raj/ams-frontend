@@ -16,7 +16,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }>) {
   const router = useRouter();
-  const { user, isLoading, session } = useAuth();
+  const { user, isLoading, session, incompleteProfile } = useAuth();
 
   const profileImageConfig: ReturnType<typeof genConfig> = useMemo(() => {
     const gender = user?.gender?.toLowerCase();
@@ -27,12 +27,6 @@ export default function DashboardLayout({
       sex: userGender,
     };
   }, [user?.email, user?.gender]);
-
-  useEffect(() => {
-    if (!isLoading && !session) {
-      router.push('/signin');
-    }
-  }, [isLoading, session, router]);
 
   const dockItems = useMemo(() => {
     const baseItems = [
@@ -77,7 +71,29 @@ export default function DashboardLayout({
     return baseItems;
   }, [router, user, profileImageConfig]);
 
+  useEffect(() => {
+    // Still loading, don't do anything yet
+    if (isLoading) return;
+
+    // Not authenticated
+    if (!session || !user) {
+      router.push('/signin');
+      return;
+    }
+
+    // User needs onboarding - redirect immediately
+    if (incompleteProfile) {
+      router.push('/onboarding');
+      return;
+    }
+  }, [isLoading, session, user, incompleteProfile, router]);
+
   if (isLoading) {
+    return <Loading />;
+  }
+
+  // If user data not ready or needs onboarding, show loader (don't render dashboard)
+  if (!user || incompleteProfile) {
     return <Loading />;
   }
 

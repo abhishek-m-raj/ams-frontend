@@ -36,19 +36,19 @@ type FormData = {
 };
 
   const FormField = ({ id, label, type = 'text', placeholder, value, error, disabled, onChange }: { id: keyof FormData; label: string; type?: string; placeholder?: string; value: string; error?: string; disabled?: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; }) => (
-    <div className="space-y-2">
+    <div className={`space-y-2 ${disabled ? 'cursor-not-allowed' : ''}`}>
       <Label htmlFor={id}>{label}</Label>
       <Input id={id} type={type} placeholder={placeholder} value={value}
-        onChange={onChange} name={id} disabled={disabled} />
+        onChange={onChange} name={id} disabled={disabled} className={disabled ? 'bg-blue-50 dark:bg-blue-950/20 opacity-75 pointer-events-none' : ''} />
       {error && <p className="text-sm text-red-500">{error}</p>}
     </div>
   );
   
   const SelectField = ({ id, label, value, error, options, placeholder, disabled, onValueChange }: { id: keyof FormData; label: string; value: string; error?: string; options: { value: string; label: string }[]; placeholder: string; disabled?: boolean; onValueChange: (value: string) => void; }) => (
-    <div className="space-y-2">
+    <div className={`space-y-2 ${disabled ? 'cursor-not-allowed' : ''}`}>
       <Label htmlFor={id}>{label}</Label>
       <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-        <SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger>
+        <SelectTrigger className={disabled ? 'bg-blue-50 dark:bg-blue-950/20 opacity-75 pointer-events-none' : ''}><SelectValue placeholder={placeholder} /></SelectTrigger>
         <SelectContent position="popper" sideOffset={5}>
           {options.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
@@ -310,14 +310,22 @@ export function SignUpUserAuthForm({ className, ...props }: UserAuthFormProps) {
               <FormField id="admissionYear" label="Admission Year" type="number" placeholder="2026" value={formData.admissionYear} error={errors.admissionYear} disabled={locked.admissionYear} onChange={handleInputEvent} />
             </div>
             <FormField id="candidateCode" label="Candidate Code" placeholder="41529505078" value={formData.candidateCode} error={errors.candidateCode} disabled={locked.candidateCode} onChange={handleInputEvent} />
-            <SelectField id="department" label="Department" value={formData.department} error={errors.department} placeholder="Select department" disabled={locked.department} options={departments} onValueChange={(value) => handleInputChange('department', value)} />
+            {!locked.department ? (
+              <SelectField id="department" label="Department" value={formData.department} error={errors.department} placeholder="Select department" options={departments} onValueChange={(value) => handleInputChange('department', value)} />
+            ) : (
+              <FormField id="department" label="Department" placeholder="Department" value={formData.department} error={errors.department} disabled={locked.department} onChange={handleInputEvent} />
+            )}
             <FormField id="dateOfBirth" label="Date of Birth" type="date" value={formData.dateOfBirth} error={errors.dateOfBirth} disabled={locked.dateOfBirth} onChange={handleInputEvent} />
           </>
         ): (
           <>
             <FormField id="designation" label="Designation" placeholder="Assistant Professor" value={formData.designation} error={errors.designation} onChange={handleInputEvent} />
-            <SelectField id="department" label="Department" value={formData.department} error={errors.department} placeholder="Select department"
-              options={[{ value: 'CSE', label: 'Computer Science and Engineering' }, { value: 'ECE', label: 'Electronics and Communication Engineering' }, { value: 'IT', label: 'Information Technology' }]} onValueChange={(value) => handleInputChange('department', value)} />
+            {!locked.department ? (
+              <SelectField id="department" label="Department" value={formData.department} error={errors.department} placeholder="Select department"
+                options={[{ value: 'CSE', label: 'Computer Science and Engineering' }, { value: 'ECE', label: 'Electronics and Communication Engineering' }, { value: 'IT', label: 'Information Technology' }]} onValueChange={(value) => handleInputChange('department', value)} />
+            ) : (
+              <FormField id="department" label="Department" placeholder="Department" value={formData.department} error={errors.department} disabled={locked.department} onChange={handleInputEvent} />
+            )}
             <FormField id="dateOfJoining" label="Date of Joining" type="date" value={formData.dateOfJoining} error={errors.dateOfJoining} onChange={handleInputEvent} />
           </>
         )}

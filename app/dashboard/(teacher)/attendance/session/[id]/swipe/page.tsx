@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, Check, X, RotateCcw, Save } from "lucide-react";
 import { getAttendanceSessionById, type AttendanceSession } from "@/lib/api/attendance-session";
 import { listUsers } from "@/lib/api/user";
-import { createBulkAttendanceRecords, type AttendanceStatus } from "@/lib/api/attendance-record";
+import { createBulkAttendanceRecords, listAttendanceRecords, updateAttendanceRecordById, type AttendanceStatus, type AttendanceRecord } from "@/lib/api/attendance-record";
 import type { User } from "@/lib/types/UserTypes";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,6 +40,7 @@ export default function SwipeAttendancePage() {
   
   // Track the current index for UI purposes 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [existingRecords, setExistingRecords] = useState<Map<string, AttendanceRecord>>(new Map());
 
   useEffect(() => {
     const loadData = async () => {
@@ -60,9 +61,43 @@ export default function SwipeAttendancePage() {
           page++;
         } while (page <= totalPages);
         
+        // Sort students in ascending order by name
+        allStudents.sort((a, b) => {
+          const nameA = (a.name || '').toLowerCase();
+          const nameB = (b.name || '').toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+        
         // Ensure standard uniform array order
         setStudents(allStudents);
         setCurrentIndex(allStudents.length - 1);
+
+        // Load existing attendance records for this session
+        try {
+          let allRecords: AttendanceRecord[] = [];
+          let recPage = 1;
+          let recTotalPages = 1;
+          do {
+            const response = await listAttendanceRecords({ session: sessionId, limit: 100, page: recPage });
+            allRecords = [...allRecords, ...response.records];
+            recTotalPages = response.pagination?.totalPages || 1;
+            recPage++;
+          } while (recPage <= recTotalPages);
+
+          const recordsMap = new Map<string, AttendanceRecord>();
+          const records: Array<{ studentId: string; status: AttendanceStatus }> = [];
+
+          allRecords.forEach((record) => {
+            recordsMap.set(record.student._id, record);
+            records.push({ studentId: record.student._id, status: record.status });
+          });
+
+          setExistingRecords(recordsMap);
+          setMarkedRecords(records);
+        } catch (error) {
+          console.warn("Failed to load existing attendance records:", error);
+          setExistingRecords(new Map());
+        }
       } catch (error) {
         console.error("Failed to load data:", error);
         toast.error("Failed to load session or students.");
@@ -127,17 +162,56 @@ export default function SwipeAttendancePage() {
     setSubmitting(true);
     try {
       if (!session) throw new Error("No session found");
-      
-      const payload = {
-        session: session._id,
-        records: markedRecords.map((r) => ({
-          student: r.studentId,
-          status: r.status,
-        })),
-      };
-      
-      await createBulkAttendanceRecords(payload);
-      toast.success("Attendance successfully marked!");
+
+      const createRecords: Array<{ student: string; status: AttendanceStatus }> = [];
+      const updateRecordsList: Array<{ recordId: string; status: AttendanceStatus }> = [];
+
+      markedRecords.forEach((record) => {
+        const existingRecord = existingRecords.get(record.studentId);
+
+        if (existingRecord) {
+          updateRecordsList.push({ recordId: existingRecord._id, status: record.status });
+        } else {
+          createRecords.push({ student: record.studentId, status: record.status });
+        }
+      });
+
+      let createdCount = 0;
+      let updatedCount = 0;
+      let errorCount = 0;
+
+      // Execute creates
+      if (createRecords.length > 0) {
+        try {
+          const result = await createBulkAttendanceRecords({
+            session: session._id,
+            records: createRecords,
+          });
+          createdCount = (result.created ?? []).length;
+          errorCount = (result.errors ?? []).length;
+        } catch (error) {
+          console.error("Failed to create attendance records:", error);
+          errorCount += createRecords.length;
+        }
+      }
+
+      // Execute updates
+      for (const { recordId, status } of updateRecordsList) {
+        try {
+          await updateAttendanceRecordById(recordId, { status });
+          updatedCount++;
+        } catch (error) {
+          console.error(`Failed to update record ${recordId}:`, error);
+          errorCount++;
+        }
+      }
+
+      const totalSaved = createdCount + updatedCount;
+      if (errorCount > 0) {
+        toast.success(`Saved ${totalSaved} records (${createdCount} new, ${updatedCount} updated) with ${errorCount} errors`);
+      } else {
+        toast.success(`Attendance successfully marked! (${createdCount} new, ${updatedCount} updated)`);
+      }
       router.push(`/dashboard/attendance`);
     } catch (error: any) {
       console.error(error);
@@ -255,17 +329,19 @@ export default function SwipeAttendancePage() {
                   {/* Built-in visual prompt for Swiping Hint */}
                   {idx === students.length - 1 && (
                     <>
-                      <div className="absolute top-4 left-4 border-2 border-red-500 text-red-500 font-bold px-3 py-1 rounded-md rotate-[-15deg] opacity-60">NOPE</div>
-                      <div className="absolute top-4 right-4 border-2 border-green-500 text-green-500 font-bold px-3 py-1 rounded-md rotate-[15deg] opacity-60">LIKE</div>
+                      <div className="absolute top-4 left-4 border-2 border-red-500 text-red-500 font-bold px-3 py-1 rounded-md -rotate-12 opacity-60">NOPE</div>
+                      <div className="absolute top-4 right-4 border-2 border-green-500 text-green-500 font-bold px-3 py-1 rounded-md rotate-12 opacity-60">LIKE</div>
                     </>
                   )}
                 </div>
 
                 <div className="p-6 flex-1 flex flex-col justify-center items-center text-center">
-                  <h2 className="text-2xl font-bold mb-1">{student.name}</h2>
-                  <Badge variant="outline" className="text-sm">
-                    {(student.profile as any)?.adm_number || "Student"}
-                  </Badge>
+                  <h2 className="text-2xl font-bold mb-3">{student.name}</h2>
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary">
+                    <span className="text-sm font-semibold text-primary">
+                      {((student.profile as any)?.candidate_code || '').slice(-3).replace(/^0+/, '') || "N/A"}
+                    </span>
+                  </div>
                   
                   <div className="mt-8 text-sm text-muted-foreground">
                     <p className="flex items-center gap-1">Swipe <strong className="text-green-500">Right</strong> for Present</p>

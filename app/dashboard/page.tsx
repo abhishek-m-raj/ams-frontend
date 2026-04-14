@@ -3,9 +3,25 @@ import { useAuth } from "@/lib/auth-context";
 import StudentDashboardPage from "./(student)/home"
 import AdminDashboardPage from "./(admin)/home";
 import TeacherDashboardPage from "./(teacher)/home";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import Loading from "@/app/loading";
 
 export default function DashboardPage() {
-    const {user } = useAuth();
+    const {user, incompleteProfile, isLoading} = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+      // If incomplete profile, redirect to onboarding
+      if (!isLoading && incompleteProfile) {
+        router.push('/onboarding');
+      }
+    }, [isLoading, incompleteProfile, router]);
+
+    // Show loading while checking status
+    if (isLoading || incompleteProfile) {
+      return <Loading />;
+    }
 
     const role = user?.role;
 

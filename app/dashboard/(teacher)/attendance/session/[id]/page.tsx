@@ -11,7 +11,7 @@ import { ArrowLeft, Calendar, Clock, Users, BookOpen, Hand, FileSpreadsheet, Che
 import { format } from "date-fns";
 import { getAttendanceSessionById, type AttendanceSession } from "@/lib/api/attendance-session";
 import { listUsers } from "@/lib/api/user";
-import { listAttendanceRecords } from "@/lib/api/attendance-record";
+import { listAttendanceRecords, createAttendanceRecord, updateAttendanceRecordById } from "@/lib/api/attendance-record";
 import type { User } from "@/lib/types/UserTypes";
 import type { AttendanceRecord } from "@/lib/api/attendance-record";
 import { getTeacherStudents } from "@/lib/dummy-data";
@@ -29,6 +29,7 @@ export default function SessionAttendanceMethodsPage() {
   const [attendanceRecords, setAttendanceRecords] = useState<Map<string, AttendanceRecord>>(new Map());
   const [loading, setLoading] = useState(true);
   const [attendanceStatus, setAttendanceStatus] = useState<Map<string, 'present' | 'absent'>>(new Map());
+  const [savingStudentId, setSavingStudentId] = useState<string | null>(null);
 
   const getDummyStatusMap = (studentIds?: Set<string>) => {
     const statusMap = new Map<string, 'present' | 'absent'>();
@@ -68,6 +69,32 @@ export default function SessionAttendanceMethodsPage() {
     }
   };
 
+  const loadAttendanceRecords = async () => {
+    try {
+      let allRecords: AttendanceRecord[] = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const response = await listAttendanceRecords({ session: sessionId, limit: 100, page });
+        allRecords = [...allRecords, ...response.records];
+        totalPages = response.pagination?.totalPages || 1;
+        page++;
+      } while (page <= totalPages);
+      const recordsMap = new Map<string, AttendanceRecord>();
+      const statusMap = new Map<string, 'present' | 'absent'>();
+      
+      allRecords.forEach((record) => {
+        recordsMap.set(record.student._id, record);
+        statusMap.set(record.student._id, record.status === 'present' ? 'present' : 'absent');
+      });
+      
+      setAttendanceRecords(recordsMap);
+      setAttendanceStatus(statusMap);
+    } catch (error) {
+      console.error("Failed to load attendance records:", error);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -87,6 +114,13 @@ export default function SessionAttendanceMethodsPage() {
           totalPages = usersResponse.pagination?.totalPages || 1;
           page++;
         } while (page <= totalPages);
+
+        // Sort students in ascending order by name
+        batchStudents.sort((a, b) => {
+          const nameA = (a.name || '').toLowerCase();
+          const nameB = (b.name || '').toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
 
         setStudents(batchStudents);
 
@@ -144,13 +178,44 @@ export default function SessionAttendanceMethodsPage() {
     return () => window.removeEventListener('focus', handleFocus);
   }, [sessionId, refreshAttendanceList]);
 
-  const toggleAttendance = (studentId: string) => {
-    setAttendanceStatus((prev) => {
-      const newStatus = new Map(prev);
-      const current = newStatus.get(studentId);
-      newStatus.set(studentId, current === 'present' ? 'absent' : 'present');
-      return newStatus;
-    });
+  const toggleAttendance = async (studentId: string) => {
+    setSavingStudentId(studentId);
+    try {
+      const currentStatus = attendanceStatus.get(studentId) || 'absent';
+      const newStatus = currentStatus === 'present' ? 'absent' : 'present';
+      
+      const existingRecord = attendanceRecords.get(studentId);
+      
+      if (existingRecord) {
+        // Update existing record
+        await updateAttendanceRecordById(existingRecord._id, { status: newStatus });
+      } else {
+        // Create new record
+        const student = students.find(s => s._id === studentId);
+        if (!student || !session) return;
+        
+        await createAttendanceRecord({
+          session: session._id,
+          student: studentId,
+          status: newStatus,
+        });
+      }
+      
+      // Update local state on success
+      setAttendanceStatus((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(studentId, newStatus);
+        return newMap;
+      });
+      
+      // Reload records to get updated data
+      loadAttendanceRecords();
+    } catch (error) {
+      console.error('Failed to save attendance:', error);
+      alert('Failed to save attendance. Please try again.');
+    } finally {
+      setSavingStudentId(null);
+    }
   };
 
   if (loading) {
@@ -305,23 +370,34 @@ export default function SessionAttendanceMethodsPage() {
                 const studentId = student._id;
                 const status = attendanceStatus.get(studentId!) || 'absent';
                 const isPresent = status === 'present';
+                const p = (student.profile as any) ?? {};
+                const candidateCode = p.candidate_code?.trim() ?? '';
+                const lastThreeDigits = candidateCode.slice(-3).replace(/^0+/, '') || 'N/A';
                 
                 return (
                   <div
                     key={studentId}
                     className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex-1">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary shrink-0">
+                        <span className="text-xs font-semibold text-primary">{lastThreeDigits}</span>
+                      </div>
                       <p className="font-medium text-sm">{student.name}</p>
-                      <p className="text-xs text-muted-foreground">{(student.profile as any)?.adm_number || 'N/A'}</p>
                     </div>
                     <Button
                       variant={isPresent ? "default" : "outline"}
                       size="sm"
                       onClick={() => toggleAttendance(studentId!)}
+                      disabled={savingStudentId === studentId}
                       className="shrink-0 gap-1"
                     >
-                      {isPresent ? (
+                      {savingStudentId === studentId ? (
+                        <>
+                          <span className="animate-spin inline-block">⟳</span>
+                          Saving...
+                        </>
+                      ) : isPresent ? (
                         <>
                           <Check className="h-4 w-4" />
                           Present
