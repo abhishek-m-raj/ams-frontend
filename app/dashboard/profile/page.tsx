@@ -23,7 +23,7 @@ export default function ProfilePage() {
   const profileImageConfig: ReturnType<typeof genConfig> = useMemo(() => {
     const gender = user?.gender?.toLowerCase();
     const userGender: "man" | "woman" =
-      gender === "male" || gender === "man" ? "man" : "woman";
+      gender == "male" || gender === "man" ? "man" : "woman";
     const randomConfig = genConfig(user?.email || "");
     return {
       ...randomConfig,
@@ -41,6 +41,7 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-background">
+      {" "}
       <div className="max-w-6xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
