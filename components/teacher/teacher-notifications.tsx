@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, Plus, Edit, Trash2, AlertCircle, Info, CheckCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/lib/auth-context";
 
 type Notification = {
   id: string;
@@ -28,6 +29,8 @@ type TeacherNotificationsProps = {
 };
 
 export default function TeacherNotifications({ notifications, teacherName }: TeacherNotificationsProps) {
+  const { config } = useAuth();
+  if (!config["feature/notifications"]) return null;
   const [notificationsList, setNotificationsList] = useState<Notification[]>(notifications);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingNotification, setEditingNotification] = useState<Notification | null>(null);

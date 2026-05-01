@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Bell, AlertCircle, Info, CheckCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/lib/auth-context";
 
 type Notification = {
   id: string;
@@ -20,6 +21,10 @@ type NotificationsListProps = {
 };
 
 export default function NotificationsList({ notifications }: NotificationsListProps) {
+  const { config } = useAuth();
+
+  if (!config["feature/notifications"]) return null;
+
   const getNotificationIcon = (type: Notification["type"]) => {
     switch (type) {
       case "warning":

@@ -2,6 +2,9 @@
 
 import { AlertCircle, Badge, Bell, CheckCircle, Info } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 
 type Notification = {
@@ -46,6 +49,16 @@ const notifications :Notification[] = [
   ];
 
 export default function StudentDashboardPage() {
+  const { config } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (config["feature/notifications"] === false) {
+      router.replace("/dashboard");
+    }
+  }, [config, router]);
+
+  if (!config["feature/notifications"]) return null;
 
    const getNotificationIcon = (type: Notification["type"]) => {
     switch (type) {

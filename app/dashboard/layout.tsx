@@ -30,7 +30,8 @@ export default function DashboardLayout({
 }>) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isLoading, session, incompleteProfile } = useAuth();
+  const { user, isLoading, session, incompleteProfile, config } = useAuth();
+  const notificationsEnabled = Boolean(config["feature/notifications"]);
   const isSharedRoute = SHARED_ROUTES.some((r) => pathname.startsWith(r));
 
   const profileImageConfig: ReturnType<typeof genConfig> = useMemo(() => {
@@ -71,10 +72,12 @@ export default function DashboardLayout({
     }
 
     // Common items for all roles
-    baseItems.push(
-      { icon: <BellRing size={18} />, label: 'Notifications', onClick: () => router.push('/dashboard/notifications') },
-      //{ icon: <Book size={18} />, label: 'Assignments', onClick: () => router.push('/dashboard/assignments') },
-    );
+    if (notificationsEnabled) {
+      baseItems.push(
+        { icon: <BellRing size={18} />, label: 'Notifications', onClick: () => router.push('/dashboard/notifications') },
+      );
+    }
+    //{ icon: <Book size={18} />, label: 'Assignments', onClick: () => router.push('/dashboard/assignments') },
 
     // Profile item (always last)
     baseItems.push({
@@ -91,7 +94,7 @@ export default function DashboardLayout({
     });
 
     return baseItems;
-  }, [router, user, profileImageConfig]);
+  }, [router, user, profileImageConfig, notificationsEnabled]);
 
   useEffect(() => {
     // Still loading, don't do anything yet
@@ -131,7 +134,8 @@ export default function DashboardLayout({
       <main className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
         <div className="flex-1 overflow-auto sm:pb-20">
-          {isSharedRoute && children}
+          {isSharedRoute && !pathname.startsWith("/dashboard/notifications") && children}
+          {isSharedRoute && pathname.startsWith("/dashboard/notifications") && notificationsEnabled && children}
 
           {!isSharedRoute && user.role === "student" && student}
           {!isSharedRoute && user.role === "admin" && admin}
