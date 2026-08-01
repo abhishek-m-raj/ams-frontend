@@ -10,7 +10,6 @@ import {
   AnimatePresence
 } from 'framer-motion';
 import React, { Children, cloneElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
 import { getUnreadCount } from '@/lib/api/notification';
 import { useAuth } from '@/lib/auth-context';
 
@@ -164,7 +163,6 @@ export default function Dock({
 }: DockProps) {
   const mouseX = useMotionValue(Infinity);
   const isHovered = useMotionValue(0);
-  const pathname = usePathname();
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -184,10 +182,13 @@ export default function Dock({
   const heightRow = useTransform(isHovered, [0, 1], [panelHeight, maxHeight]);
   const height = useSpring(heightRow, spring);
 
+  // Fetch unread notification count once when the app loads or user logs in
   useEffect(() => {
+    if (!user?._id) return;
     refreshUnreadCount();
-  }, [pathname, refreshUnreadCount]);
+  }, [user?._id, refreshUnreadCount]);
 
+  // Keep local tab/state events updated without triggering network polling
   useEffect(() => {
     const handleRefresh = () => refreshUnreadCount();
     const handleStorage = (event: StorageEvent) => {
@@ -196,16 +197,10 @@ export default function Dock({
       }
     };
 
-    window.addEventListener('focus', handleRefresh);
-    window.addEventListener('visibilitychange', handleRefresh);
     window.addEventListener('storage', handleStorage);
     window.addEventListener('ams:notifications:updated', handleRefresh as EventListener);
 
-    const interval = setInterval(refreshUnreadCount, 20000);
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', handleRefresh);
-      window.removeEventListener('visibilitychange', handleRefresh);
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('ams:notifications:updated', handleRefresh as EventListener);
     };
